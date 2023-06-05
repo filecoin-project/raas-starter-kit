@@ -31,7 +31,7 @@ contract DealStatus {
             }
         }
 
-        return cidToActiveDealIDs[_cid];
+        return allDealIDs;
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
@@ -50,6 +50,6 @@ contract DealStatus {
             }
         }
 
-        return cidToActiveDealIDs[_cid];
+        return allDealIDs;
     }
 }
