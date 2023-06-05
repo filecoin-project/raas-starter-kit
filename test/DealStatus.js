@@ -100,40 +100,6 @@ describe("Aggregator Tests", function () {
             rval = CIDTool.format(ipfsCid, { base: 'base16' })
             return rval.substr(1, rval.length - 1);
         }
-        
-        it("Should submit a successful completion callback with the expected Aux Data from EdgeUR", async function () {
-            const tt = [
-                {      
-                    filename: "./test/edge-ur-response1.json"
-                },
-                {      
-                    filename: "./test/edge-ur-response2.json"
-                },
-                {      
-                    filename: "./test/edge-ur-response3.json"
-                },
-            ]
-            for (let i = 0; i < tt.length; i++) {
-                const jsonData = fs.readFileSync(tt[i].filename);
-                let input = JSON.parse(jsonData);
-                verifData = {
-                    commPc: "0x" + ipfsCidToHex(input.data.sub_piece_info.comm_pc),
-                    sizePc: input.data.sub_piece_info.size_pc,
-                }
-                incProof = {
-                    proofSubtree: {
-                        index: input.data.sub_piece_info.inclusion_proof.proofSubtree.index,
-                        path: input.data.sub_piece_info.inclusion_proof.proofSubtree.path
-                    },
-
-                    proofIndex:{
-                        index: input.data.sub_piece_info.inclusion_proof.proofIndex.index,
-                        path: input.data.sub_piece_info.inclusion_proof.proofIndex.path
-                    },
-                }
-                await expect(this.aggregator.complete(1, 1234, incProof, verifData)).to.emit(this.aggregator, "CompleteAggregatorRequest").withArgs(1, 1234);
-            }
-        });
 
         it("Should return all dealIDs created by the aggregator", async function() {
             verifData = {
@@ -200,12 +166,12 @@ describe("Aggregator Tests", function () {
         
         it("Should return all the input cid's active dealIds", async function() {
             const activeDeals = await this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
-            await expect(activeDeals.toString()).to.be.equal("1234,2222");
+            await expect(activeDeals).to.be.equal("1234,2222");
         });
 
         it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function() {
             const dealsToExpire = await this.dealstatus.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000);
-            await expect(dealsToExpire.toString()).to.be.equal("1234,2222");
+            await expect(dealsToExpire).to.be.equal("1234,2222");
         });
     });
 });

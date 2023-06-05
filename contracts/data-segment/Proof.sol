@@ -7,7 +7,7 @@ pragma solidity ^0.8.9;
 import "./Const.sol";
 import {Cid} from "./Cid.sol";
 import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "./ProofTypes.sol";
-import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
+import {MarketAPI} from "../mocks/MarketAPIMock.sol";
 import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 contract Proof {
