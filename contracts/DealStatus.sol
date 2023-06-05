@@ -8,12 +8,12 @@ import "./interfaces/IAggregatorOracle.sol";
 
 contract DealStatus {
 
-    IDeltaAggregatorOracle public deltaAggregatorOracle;
+    IAggregatorOracle public deltaAggregatorOracle;
     mapping(bytes => uint64[]) public cidToActiveDealIDs;
     mapping(bytes => uint64[]) public cidToExpiringDealIDs;
 
     constructor(address _deltaAggregatorOracle) {
-        deltaAggregatorOracle = IDeltaAggregatorOracle(_deltaAggregatorOracle);
+        deltaAggregatorOracle = IAggregatorOracle(_deltaAggregatorOracle);
     }
 
     // getActiveDeals should return all the _cid's active dealIds
@@ -35,7 +35,7 @@ contract DealStatus {
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
-    function getExpiringDeals(bytes memory _cid) external returns (uint64[] memory) {
+    function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (uint64[] memory) {
         // the logic is similar to the above, but use this api call: 
         // https://github.com/Zondax/filecoin-solidity/blob/master/contracts/v0.8/MarketAPI.sol#LL110C9-L110C9
         uint64[] memory allDealIDs = deltaAggregatorOracle.getAllDeals(_cid);
@@ -45,7 +45,7 @@ contract DealStatus {
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealID);
             
-            if (block.timestamp > uint64(dealTerm.end)) {
+            if (block.timestamp > uint64(dealTerm.end) - epochs) {
                 cidToActiveDealIDs[_cid].push(dealID);
             }
         }
