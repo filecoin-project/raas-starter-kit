@@ -166,7 +166,7 @@ describe("Aggregator Tests", function () {
         });
         
         it("Should return all the input cid's active dealIds", async function() {
-            await expect(this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127")).to.emit(this.dealstatus, "ActiveDeals").withArgs([0]);
+            await expect(this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127")).to.emit(this.dealstatus, "ActiveDeals").withArgs([1234]);
         });
 
         it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function() {

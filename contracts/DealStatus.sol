@@ -27,7 +27,7 @@ contract DealStatus {
             // get the deal's expiration epoch
             MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI.getDealActivation(dealID);
             
-            if (dealActivationStatus.terminated == -1 && dealActivationStatus.activated != -1) {
+            if (dealActivationStatus.terminated != -1 && dealActivationStatus.activated == -1) {
                 delete activeDealIDs[i];
             }
         }
