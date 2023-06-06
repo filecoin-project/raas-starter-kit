@@ -31,7 +31,7 @@ contract DealStatus {
             }
         }
 
-        return allDealIDs;
+        return cidToActiveDealIDs[_cid];
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
@@ -46,10 +46,10 @@ contract DealStatus {
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealID);
             
             if (block.timestamp > uint64(dealTerm.end) - epochs) {
-                cidToActiveDealIDs[_cid].push(dealID);
+                cidToExpiringDealIDs[_cid].push(dealID);
             }
         }
 
-        return allDealIDs;
+        return cidToExpiringDealIDs[_cid];
     }
 }
