@@ -161,7 +161,6 @@ describe("Aggregator Tests", function () {
             }
             await expect(this.aggregator.complete(1, 2222, incProof, verifData)).to.emit(this.aggregator, "CompleteAggregatorRequest").withArgs(1, 2222);
             const allDeals = await this.aggregator.getAllDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
-            // This should only return "1234" - i.e. no duplicates, and different CIDs
             await expect(allDeals.toString()).to.be.equal("1234,2222");
         });
         
