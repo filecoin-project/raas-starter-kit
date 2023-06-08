@@ -1,4 +1,13 @@
-# FEVM Hardhat Kit
+# Replication/Renewal-as-a-Service Starter Kit
+
+## Introduction
+
+This repository consists of two components to build a tool to renew or replicate storage deals.
+
+* DealStatus Contract: a smart contract to query the status of storage deals.
+* Service.js: a RaaS aplication that renew or replicate storage deals when necessary. It is not implemented and a few comments were provided.
+
+Please refer to this [doc](https://www.notion.so/pl-strflt/Data-FVM-234b7f4c17624cd8b972f92806732ca9) to understand more.
 
 ## Cloning the Repo
 
@@ -6,8 +15,8 @@ Open up your terminal (or command prompt) and navigate to a directory you would 
 
 
 ```
-git clone --recurse-submodules https://github.com/filecoin-project/fevm-hardhat-kit.git
-cd fevm-hardhat-kit
+git clone --recurse-submodules git@github.com:filecoin-project/raas-starter-kit.git
+cd raas-starter-kit
 yarn install
 ```
 
@@ -46,16 +55,7 @@ This will show you the ethereum-style address associated with that private key a
 Go to the [Calibrationnet testnet faucet](https://calibration.yoga/#faucet), and paste in the Ethereum address from the previous step. This will send some calibration testnet FIL to the account.
 
 
-## Deploy the Contracts
-
-Currently there are 3 main types of contracts:
-
-* Basic Solidity Examples: Simple contracts to show off basic solidity
-
-* Filecoin API Examples: Contracts that demo how to use the Filecoin APIs in Solidity to access storage deals and other Filecoin specific functions.
-
-* Basic Deal Client: A contract that demos how to create Filecoin storage deals within Solidity smart contracts. See below to learn more.
-
+## Deploy the DealStatus Contract
 
 Type in the following command in the terminal to deploy all contracts:
 
@@ -63,44 +63,10 @@ Type in the following command in the terminal to deploy all contracts:
 yarn hardhat deploy
 ```
 
-This will compile all the contracts in the contracts folder and deploy them to the Calibrationnet test network automatically!
+This will compile the DealStatus contract and deploy it to the Calibrationnet test network automatically!
 
-Keep note of the deployed contract addresses for the next step.
+Keep note of the deployed contract address.
 
-## Interact with the Contracts
+## Use Ngrok
 
-You can interact with contracts via hardhat tasks, found in the 'tasks' folder. For example, to interact with the SimpleCoin contract:
-
-Type in the following command in the terminal:
-
- ```
-yarn hardhat get-balance --contract 'THE DEPLOYED CONTRACT ADDRESS HERE' --account 'YOUR ETHEREUM ADDRESS HERE'
-```
-
-The console should read that your account has 12000 SimpleCoin!
-
-## Filecoin APIs
-
-The primary advantage of the FEVM over other EVM based chains is the ability to access and program around Filecoin storage deals. This can be done in the FEVM via the [Filecoin.sol library maintained by Zondax](https://github.com/Zondax/filecoin-solidity). **Note this library is currently in BETA**. It is unaudited, and the APIs will likely be changing with time. This repo will be updated as soon as possible when a breaking change occurs.
-
-The library is included in this kit as an NPM package and will automatically be downloaded when you perform the `yarn` command (don't confuse these with the included mocks)!
-
-Currently you will find a getter contract that calls the getter methods on the MarketAPI to get storage deal data and store that data. To do this you will need *dealIDs* which you can [find here on FilFox](https://calibrationnet.filfox.info/en/deal).
-
-As an example to store most of the data available for a deal run the store-all command with a specified dealID. Below is an example of using this command below with a deal on Calibrationnet testnet with a dealID of 707.
-
-```
-yarn hardhat store-all --contract "DEPLOYED FILECOIN_MARKET_CONSUMER CONTRACT ADDRESS HERE" --dealid "707"
-```
-
-### Preparing Data for Storage
-
-Before storing a file with a storage provider, it needs to be prepared by turning it into a .car file and the metadata must be recorded. To do this, the hardhat kit has a [tool submodule](https://github.com/filecoin-project/fevm-hardhat-kit/tree/main/tools), written in the language Go, which can do this for you. You can also use the [FVM Data Depot website](https://data.lighthouse.storage/) will automatically convert files to the .car format, output all the necessary metadata, and act as an HTTP retrieval point for the storage providers.
-
-### Client Contract - Making Storage Deals in Solidity
-
-Under contracts, within the `basic-deal-client` sub-directory, you will find a file called `DealClient.sol`. This is an example contract that uses the Filecoin.sol API's to create storage deals via Solidity smart contracts on Filecoin. This works by emitting a Solidity event that [Boost storage providers](https://boost.filecoin.io/) can listen to. To learn more about this contract feel free to [checkout the app kit repo](https://github.com/filecoin-project/fvm-starter-kit-deal-making) which includes a detailed readme and a frontend.
-
-### Bounty Contract
-
-Under contracts, within the `filecoin-api-examples` sub-directory, you will find a file called `deal-rewarder.sol`. This is a basic example contract that uses the Filecoin.sol API's to create bounties for specific data to be stored on the Filecoin blockchain. This is intended to be an example to illustrate how you can use the Filecoin APIs to do some cool functionality. To learn more about this contract feel free to [checkout the original Foundry project](https://github.com/lotus-web3/deal-bounty-contract) which includes a detailed readme.
+You may use [ngrok](https://ngrok.com/docs/getting-started/) to expose your localhost for public access
