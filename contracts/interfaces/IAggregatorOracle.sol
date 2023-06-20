@@ -18,4 +18,10 @@ interface IAggregatorOracle {
 
     // Get all deal IDs for a specified cid
     function getAllDeals(bytes memory _cid) external returns (uint64[] memory);
+
+    // getActiveDeals should return all the _cid's active dealIds
+    function getActiveDeals(bytes memory _cid) external returns (uint64[] memory);
+
+    // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
+    function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (uint64[] memory);
 }

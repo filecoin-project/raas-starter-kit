@@ -17,16 +17,13 @@ async function deploy(name) {
 describe("Aggregator Tests", function () {
 
     before(async function() {
-        this.aggregator = await deploy('EdgeAggregatorOracle');
-        const DealStatus = await ethers.getContractFactory("DealStatus");
-        this.dealstatus = await DealStatus.deploy(this.aggregator.address);
-        await this.dealstatus.deployed();
+        this.dealstatus = await deploy('DealStatus');
     });
 
     describe("Validate Aggregator", function() {
         it("Should submit a valid request", async function() { 
             cid = "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127";
-            await expect(this.aggregator.submit(cid)).to.emit(this.aggregator, "SubmitAggregatorRequest").withArgs(1, cid);
+            await expect(this.dealstatus.submit(cid)).to.emit(this.dealstatus, "SubmitAggregatorRequest").withArgs(1, cid);
         });
 
         it("Should submit a callback with the expected Aux Data", async function () {
@@ -86,10 +83,10 @@ describe("Aggregator Tests", function () {
                 commPa: "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
                 sizePa: 0x800000000
             }
-            await expect(this.aggregator.complete(1, 1234, incProof, verifData)).to.emit(this.aggregator, "CompleteAggregatorRequest").withArgs(1, 1234);
+            await expect(this.dealstatus.complete(1, 1234, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 1234);
 
             /*
-            const newAux = await this.aggregator.complete(1, 1234, incProof, verifData);
+            const newAux = await this.dealstatus.complete(1, 1234, incProof, verifData);
             console.log(newAux);
             expect(newAux.data.commPa).to.equal(expectedAux.commPa);
             expect(newAux.data.sizePa).to.equal(expectedAux.sizePa);
@@ -159,8 +156,8 @@ describe("Aggregator Tests", function () {
                 commPa: "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
                 sizePa: 0x800000000
             }
-            await expect(this.aggregator.complete(1, 2222, incProof, verifData)).to.emit(this.aggregator, "CompleteAggregatorRequest").withArgs(1, 2222);
-            const allDeals = await this.aggregator.getAllDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
+            await expect(this.dealstatus.complete(1, 2222, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 2222);
+            const allDeals = await this.dealstatus.getAllDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
             await expect(allDeals.toString()).to.be.equal("1234,2222");
         });
         
