@@ -2,6 +2,9 @@ const express = require('express')
 const app = express()
 const port = 3000
 
+const { ethers } = require("hardhat");
+let jobs = []; // List to store the jobs
+
 // This file is an example of a service that works with an aggregator, an aggregator contract, and a developer contract
 // to renew expiring storage deals or replicate storage deals to desiring number of replications.
 // Please refer to this [doc](https://www.notion.so/pl-strflt/Data-FVM-234b7f4c17624cd8b972f92806732ca9) to understand more.
@@ -18,9 +21,27 @@ const port = 3000
 // @apiParam {String} job_type Type of the job. Possible values are 'renew' or 'replication'
 // @apiParam {Number} replication_target Number of replications. This should be empty for 'renew' jobs
 app.get('/api/register_job', (req, res) => {
-  // Saves the provided CID, end_date, and job_type. The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
-  //
-  // TODO: to be implemented
+  // Saves the provided CID, end_date, and job_type. 
+  // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
+  // Extract the parameters from request
+  let cid = req.query.cid;
+  let end_date = req.query.end_date;
+  let job_type = req.query.job_type;
+  let replication_target = req.query.replication_target;
+
+  // Create a new job object
+  let newJob = {
+    cid: cid,
+    endDate: end_date,
+    jobType: job_type,
+    replicationTarget: replication_target,
+  };
+
+  // Push the job into the jobs list
+  jobs.push(newJob);
+
+  // Send a response back to the client
+  res.json({ message: "Job registered successfully." });
 })
 
 function worker_replication_job() {
@@ -30,6 +51,17 @@ function worker_replication_job() {
   // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
   //
   // TODO: to be implemented
+  // Fetch jobs of type 'replication'
+  let replicationJobs = jobs.filter(job => job.jobType == 'replication');
+  
+  // for each replication job, check the current number of replications for the CID
+  // If the number of replications is less than the target, call aggregator contract to initiate a new deal
+  // for (job in replicationJobs) {
+  //   const numReplications = fetchNumReplications(job.cid);
+  //   if (numReplications < job.replicationTarget) {
+  //     callAggregatorContract(job.cid);
+  //   }
+  // }
 }
 
 function worker_renewal_job() {
@@ -38,6 +70,8 @@ function worker_renewal_job() {
   // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
   //
   // TODO: to be implemented
+  let renewalJobs = jobs.filter(job => job.jobType == 'renew');
+  // Similar to above in terms of pseudocode
 }
 
 function worker_deal_creation_job() {
