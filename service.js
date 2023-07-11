@@ -1,9 +1,11 @@
 const express = require('express')
+const { ethers } = require("hardhat");
+
 const app = express()
 const port = 3000
 
-const { ethers } = require("hardhat");
 let jobs = []; // List to store the jobs
+let aggregator_contract = 
 
 // This file is an example of a service that works with an aggregator, an aggregator contract, and a developer contract
 // to renew expiring storage deals or replicate storage deals to desiring number of replications.
@@ -20,7 +22,7 @@ let jobs = []; // List to store the jobs
 // @apiParam {String} end_date The date that the job should stop and the worker should stop checking the status of the deals (YYYY-MM-DD format)
 // @apiParam {String} job_type Type of the job. Possible values are 'renew' or 'replication'
 // @apiParam {Number} replication_target Number of replications. This should be empty for 'renew' jobs
-app.get('/api/register_job', (req, res) => {
+app.post('/api/register_job', (req, res) => {
   // Saves the provided CID, end_date, and job_type. 
   // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
   // Extract the parameters from request
@@ -44,24 +46,24 @@ app.get('/api/register_job', (req, res) => {
   res.json({ message: "Job registered successfully." });
 })
 
+
 function worker_replication_job() {
   // The replication_job should retrieve all active storage deals for the provided cid from the aggregator contract.
   // If the number of active storage deals is smaller than the replication target,
   // the worker sends the cid to the aggregator smart contract,
   // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
   //
-  // TODO: to be implemented
   // Fetch jobs of type 'replication'
   let replicationJobs = jobs.filter(job => job.jobType == 'replication');
   
   // for each replication job, check the current number of replications for the CID
   // If the number of replications is less than the target, call aggregator contract to initiate a new deal
-  // for (job in replicationJobs) {
-  //   const numReplications = fetchNumReplications(job.cid);
-  //   if (numReplications < job.replicationTarget) {
-  //     callAggregatorContract(job.cid);
-  //   }
-  // }
+  for (job in replicationJobs) {
+    const numReplications = fetchNumReplications(job.cid);
+    if (numReplications < job.replicationTarget) {
+      callAggregatorContract(job.cid);
+    }
+  }
 }
 
 function worker_renewal_job() {
