@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "coverage": "hardhat coverage --solcoverjs ./.solcover.js",
     "fuzzing": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
-    "chain": "hardhat node --network hardhat --no-deploy"
+    "chain": "hardhat node --network hardhat --no-deploy",
+    "service": "node api/service.js"
   },
   "license": "MIT",
   "devDependencies": {

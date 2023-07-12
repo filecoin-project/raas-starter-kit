@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IAggregatorOracle.sol";
 import "./data-segment/Proof.sol";
 
-import {MarketAPI} from "./mocks/MarketAPIMock.sol";
+import { MarketAPI } from "./mocks/MarketAPIMock.sol";
 import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 // Delta that implements the AggregatorOracle interface

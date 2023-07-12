@@ -17,11 +17,11 @@ module.exports = {
           },
         },
       },
-    defaultNetwork: "localnet",
+    defaultNetwork: "calibrationnet",
     networks: {
         localnet: {
-            chainId: 1337,
-            url: "http://127.0.0.1:8545/",
+            chainId: 31415926,
+            url: "http://127.0.0.1:1234/rpc/v1",
             accounts: [PRIVATE_KEY],
         },
         calibrationnet: {
