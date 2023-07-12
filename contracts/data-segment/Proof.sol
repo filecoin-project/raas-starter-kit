@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -18,7 +18,7 @@ contract Proof {
     function computeExpectedAuxData(
         InclusionProof memory ip,
         InclusionVerifierData memory verifierData
-    ) public pure returns (InclusionAuxData memory) {
+    ) internal pure returns (InclusionAuxData memory) {
         require(
             isPow2(uint64(verifierData.sizePc)),
             "Size of piece provided by verifier is not power of two"
@@ -41,10 +41,7 @@ contract Proof {
         );
         bytes32 enNode = truncatedHash(serialize(en));
         bytes32 assumedCommPa2 = computeRoot(ip.proofIndex, enNode);
-        require(
-            assumedCommPa == assumedCommPa2,
-            "aggregator's data commitments don't match"
-        );
+        require(assumedCommPa == assumedCommPa2, "aggregator's data commitments don't match");
 
         (bool ok2, uint64 assumedSizePa2) = checkedMultiply(
             uint64(1) << uint64(ip.proofIndex.path.length),
@@ -63,7 +60,7 @@ contract Proof {
         uint64 dealId,
         InclusionProof memory ip,
         InclusionVerifierData memory verifierData
-    ) public returns (InclusionAuxData memory) {
+    ) internal returns (InclusionAuxData memory) {
         InclusionAuxData memory inclusionAuxData = computeExpectedAuxData(ip, verifierData);
         validateInclusionAuxData(dealId, inclusionAuxData);
         return inclusionAuxData;
@@ -102,10 +99,7 @@ contract Proof {
     }
 
     // computeRoot computes the root of a Merkle tree given a leaf and a Merkle proof.
-    function computeRoot(
-        ProofData memory d,
-        bytes32 subtree
-    ) public pure returns (bytes32) {
+    function computeRoot(ProofData memory d, bytes32 subtree) internal pure returns (bytes32) {
         require(d.path.length < 64, "merkleproofs with depths greater than 63 are not supported");
         require(d.index >> d.path.length == 0, "index greater than width of the tree");
 
@@ -126,7 +120,7 @@ contract Proof {
     }
 
     // computeNode computes the parent node of two child nodes
-    function computeNode(bytes32 left, bytes32 right) public pure returns (bytes32) {
+    function computeNode(bytes32 left, bytes32 right) internal pure returns (bytes32) {
         bytes32 digest = sha256(abi.encodePacked(left, right));
         return truncate(digest);
     }
@@ -177,15 +171,12 @@ contract Proof {
         ProofData memory proof,
         bytes32 root,
         bytes32 leaf
-    ) public pure returns (bool) {
+    ) internal pure returns (bool) {
         return computeRoot(proof, leaf) == root;
     }
 
     // processProof computes the root of the merkle tree given the leaf and the inclusion proof.
-    function processProof(
-        ProofData memory proof,
-        bytes32 leaf
-    ) internal pure returns (bytes32) {
+    function processProof(ProofData memory proof, bytes32 leaf) internal pure returns (bytes32) {
         bytes32 computedHash = leaf;
         for (uint256 i = 0; i < proof.path.length; i++) {
             computedHash = hashNode(computedHash, proof.path[i]);
@@ -194,14 +185,14 @@ contract Proof {
     }
 
     // hashNode hashes the given node with the given left child.
-    function hashNode(bytes32 left, bytes32 right) public pure returns (bytes32) {
+    function hashNode(bytes32 left, bytes32 right) internal pure returns (bytes32) {
         bytes32 truncatedData = sha256(abi.encodePacked(left, right));
         truncatedData &= TRUNCATOR;
         return truncatedData;
     }
 
     // truncatedHash computes the truncated hash of the given data.
-    function truncatedHash(bytes memory data) public pure returns (bytes32) {
+    function truncatedHash(bytes memory data) internal pure returns (bytes32) {
         bytes32 truncatedData = sha256(abi.encodePacked(data));
         truncatedData &= TRUNCATOR;
         return truncatedData;
@@ -222,7 +213,7 @@ contract Proof {
     }
 
     // computeChecksum computes the checksum of the given segment description.
-    function computeChecksum(SegmentDesc memory _sd) public pure returns (bytes16) {
+    function computeChecksum(SegmentDesc memory _sd) internal pure returns (bytes16) {
         bytes memory serialized = serialize(_sd);
         bytes32 digest = sha256(serialized);
         digest &= hex"ffffffffffffffffffffffffffffff3f";
@@ -230,7 +221,7 @@ contract Proof {
     }
 
     // serialize serializes the given segment description.
-    function serialize(SegmentDesc memory sd) public pure returns (bytes memory) {
+    function serialize(SegmentDesc memory sd) internal pure returns (bytes memory) {
         bytes memory result = new bytes(ENTRY_SIZE);
 
         // Pad commDs
