@@ -95,5 +95,6 @@ contract DealStatus is IAggregatorOracle, Proof {
         }
 
         emit ExpiringDeals(expiringDealIDs);
+
     }
 }

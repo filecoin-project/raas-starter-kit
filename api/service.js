@@ -26,42 +26,26 @@ let jobs = []; // List to store the jobs
 app.post('/api/register_job', async (req, res) => {
   // Saves the provided CID, end_date, and job_type. 
   // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
-  // Extract the parameters from request
-  let cid = req.query.cid;
+
   // Check if cid is a hexadecimal string
   try {
-    ethers.utils.arrayify(cid); // this will throw an error if cid is not valid bytes or hex string
+    ethers.utils.arrayify(req.query.cid); // this will throw an error if cid is not valid bytes or hex string
   } catch {
     console.log("Error: CID must be a hexadecimal string or bytes");
     return res.status(400).json({ error: 'CID must be a hexadecimal string or bytes' });
   }
-  let end_date = req.query.end_date;
-  let job_type = req.query.job_type;
-  let replication_target = req.query.replication_target;
-
-  // Create a new job object
+  // Create a new job object from the request
   let newJob = {
-    cid: cid,
-    endDate: end_date,
-    jobType: job_type,
-    replicationTarget: replication_target,
+    cid: req.query.cid,
+    endDate: req.query.end_date,
+    jobType: req.query.job_type,
+    replicationTarget: req.query.replication_target,
   };
 
   let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
 
-  // Register the job's CID in the aggregator contract TODO: This should be replaced with sending data to agg.
-  console.log("Submitting job to aggregator contract", newJob.cid);
-  await dealstatus.submit(cid);
-  
-  const submitAggregatorRequestPromise = new Promise((resolve, reject) => {
-    dealstatus.once("SubmitAggregatorRequest", (txId, cid) => {
-      // Push the job into the jobs list
-      jobs.push(newJob);
-
-      console.log(jobs);
-      resolve();
-    });
-  });
+  // Register the job's CID in the aggregator contract TODO: This should be replaced with worker job
+  await worker_deal_creation_job(newJob);
   // Wait for the event to be fired
   await submitAggregatorRequestPromise;
 
@@ -79,21 +63,29 @@ async function worker_replication_job(job) {
   let cid = job.cid;
 
   // Periodically, ask for all the active deals that include the data’s cid
-  const activeDeals = await dealstatus.getActiveDeals(cid);
+  await dealstatus.getActiveDeals(cid);
 
-  // Then, for each replication job, check the current number of replications for the CID
-  if (activeDeals.length < job.replicationTarget) {
-    // If the number of replications is less than the target, call aggregator contract to initiate a new deal
-    // Send CID to the aggregator contract
-    worker_deal_creation_job(job);
-  }
+  const getActiveDealsPromise = new Promise((resolve, reject) => {
+    dealstatus.once("ActiveDeals", async (activeDealIDs) => {
+      // For each replication job, check the current number of replications for the CID
+      console.log("Current active deals, ", activeDealIDs);
+      if (activeDealIDs.length < job.replicationTarget) {
+        // If the number of replications is less than the target, call aggregator contract to initiate a new deal
+        // Send CID to the aggregator contract
+        await worker_deal_creation_job(job);
+      }
+      resolve();
+    });
+  });
+
+  // Wait for the event to be fired
+  await getActiveDealsPromise;
 }
 
 async function worker_renewal_job(job) {
   // The renewal job should retrieve all expiring storage deals of the cid.
   // For the expiring storage deals, the worker sends the cid to the aggregator smart contract,
   // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
-  //
 
   // Deployment instance of aggregator contract
   console.log("Executing replication job");
@@ -101,16 +93,19 @@ async function worker_renewal_job(job) {
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
-  const activeDeals = await dealstatus.getExpiringDeals(job.cid);
-  console.log("Test activeDeals", activeDeals);
+  await dealstatus.getExpiringDeals(job.cid);
 
-  // Then, for each replication job, check the current number of replications for the CID
-  if (activeDeals.length < job.replicationTarget) {
-    // If the number of replications is less than the target, call aggregator contract to initiate a new deal
-    // Send CID to the aggregator contract
-    console.log("Submitting job to aggregator contract", job.cid);
-    await dealstatus.submit(job.cid);
-  }
+  const getActiveDealsPromise = new Promise((resolve, reject) => {
+    dealstatus.once("ExpiringDeals", (expiringDealIDs) => {
+      // Sends the cid to the aggregator smart contract for each expiring deal
+      expiringDealIDs.forEach(async () => {
+        await worker_deal_creation_job(job.cid)
+      });
+      resolve();
+    });
+  });
+
+  await getActiveDealsPromise;
 }
 
 async function worker_deal_creation_job(job) {
@@ -131,6 +126,18 @@ async function worker_deal_creation_job(job) {
   // for the provided cid from the aggregator contract.
   console.log("Submitting job to aggregator contract with CID: ", job.cid);
   await dealstatus.submit(job.cid);
+
+  const submitAggregatorRequestPromise = new Promise((resolve, reject) => {
+    dealstatus.once("SubmitAggregatorRequest", (txId, cid) => {
+      // Push the job into the jobs list
+      console.log(`SubmitAggregatorRequest event: (${txId}, ${cid}})`);
+
+      jobs.push(newJob);
+      resolve();
+    });
+  });
+  // Wait for the event to be fired
+  await submitAggregatorRequestPromise;
 }
 
 
@@ -142,7 +149,7 @@ app.listen(port, () => {
     // e.g. every 12 hours, until the specified end_date is reached.
     // Extract the parameters from request
   
-    jobs.forEach(job => {
+    jobs.forEach(async job => {
       console.log("Executing on jobs");
       //Remove the job if it's end date is reached
       if (job.endDate < Date.now()) {
@@ -150,13 +157,13 @@ app.listen(port, () => {
       }
       // Otherwise, execute on the jobs (Every 12 hours)
       if (job.jobType == 'replication') {
-        worker_replication_job(job);
+        await worker_replication_job(job);
       }
       else if (job.jobType == 'renew') {
-        worker_renewal_job(job);
+        await worker_renewal_job(job);
       }
       else if (job.jobType == 'renew') {
-        worker_repair_job(job);
+        await worker_repair_job(job);
       }
       else {
         console.log("Error: Invalid job type");
