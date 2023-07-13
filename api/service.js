@@ -49,7 +49,7 @@ app.post('/api/register_job', async (req, res) => {
 
   let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
 
-  // Register the job's CID in the aggregator contract
+  // Register the job's CID in the aggregator contract TODO: This should be replaced with sending data to agg.
   console.log("Submitting job to aggregator contract", newJob.cid);
   await dealstatus.submit(cid);
   
@@ -76,8 +76,10 @@ async function worker_replication_job(job) {
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
-  const activeDeals = await dealstatus.getActiveDeals(job.cid);
-  console.log("Test activeDeals", activeDeals);
+  let cid = job.cid;
+
+  // Periodically, ask for all the active deals that include the data’s cid
+  const activeDeals = await dealstatus.getActiveDeals(cid);
 
   // Then, for each replication job, check the current number of replications for the CID
   if (activeDeals.length < job.replicationTarget) {
@@ -127,7 +129,7 @@ async function worker_deal_creation_job(job) {
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
-  console.log("Submitting job to aggregator contract", job.cid);
+  console.log("Submitting job to aggregator contract with CID: ", job.cid);
   await dealstatus.submit(job.cid);
 }
 
@@ -152,6 +154,9 @@ app.listen(port, () => {
       }
       else if (job.jobType == 'renew') {
         worker_renewal_job(job);
+      }
+      else if (job.jobType == 'renew') {
+        worker_repair_job(job);
       }
       else {
         console.log("Error: Invalid job type");
