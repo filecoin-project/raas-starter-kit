@@ -3,6 +3,10 @@ const { ethers } = require("hardhat");
 
 const { networkConfig } = require("../helper-hardhat-config")
 
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
+
 const app = express()
 const port = 1337
 
@@ -27,6 +31,7 @@ app.post('/api/register_job', async (req, res) => {
   // Saves the provided CID, end_date, and job_type. 
   // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
 
+  // TODO: Data validation
   // Check if cid is a hexadecimal string
   try {
     ethers.utils.arrayify(req.query.cid); // this will throw an error if cid is not valid bytes or hex string
@@ -42,12 +47,8 @@ app.post('/api/register_job', async (req, res) => {
     replicationTarget: req.query.replication_target,
   };
 
-  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
-
   // Register the job's CID in the aggregator contract TODO: This should be replaced with worker job
   await worker_deal_creation_job(newJob);
-  // Wait for the event to be fired
-  await submitAggregatorRequestPromise;
 
   // Send a response back to the client
   return res.status(201).json({ message: "Job registered successfully." });
@@ -121,6 +122,8 @@ async function worker_deal_creation_job(job) {
   
   // Deployment instance of aggregator contract
   let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
+  let jobTxId;
+  let jobCID;
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
@@ -128,11 +131,18 @@ async function worker_deal_creation_job(job) {
   await dealstatus.submit(job.cid);
 
   const submitAggregatorRequestPromise = new Promise((resolve, reject) => {
-    dealstatus.once("SubmitAggregatorRequest", (txId, cid) => {
+    dealstatus.once("SubmitAggregatorRequest", async (txId, cid) => {
       // Push the job into the jobs list
       console.log(`SubmitAggregatorRequest event: (${txId}, ${cid}})`);
+      jobTxId = txId;
+      jobCID = cid;
 
-      jobs.push(newJob);
+      let apiKeyResponse = await axios.get('https://auth.estuary.tech/register-new-token');
+      let apiKey = apiKeyResponse.data.token; // Make sure the API key is retrieved correctly from the response.
+
+      await downloadFile(cid);
+      await uploadFileAndMakeDeal(path.join(__dirname, 'download', `${cid}`), apiKey);
+      console.log(apiKey);
       resolve();
     });
   });
@@ -140,6 +150,52 @@ async function worker_deal_creation_job(job) {
   await submitAggregatorRequestPromise;
 }
 
+async function uploadFileAndMakeDeal(filePath, apiKey) {
+  try {
+      let formData = new FormData();
+      formData.append('data', fs.createReadStream(filePath));
+      formData.append('miners', "t017840");
+
+      let response = await axios.post('https://api.estuary.tech/content/add', formData, {
+          headers: {
+              ...formData.getHeaders(),
+              'Authorization': `Bearer ${apiKey}`
+          },
+      });
+
+      let contentId = response.data.contents.ID;
+
+      console.log('Deal made successfully', response.data);
+
+      // TODO: Get deal's information from the response and send it to the aggregator contract
+  } catch (error) {
+      console.error('An error occurred:', error);
+  }
+}
+
+async function downloadFile(cid) {
+  try {
+      const url = `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`;
+      const outputPath = path.join(__dirname, 'download', `${cid}`);
+
+      const response = await axios({
+          url,
+          method: 'GET',
+          responseType: 'stream',
+      });
+
+      const writer = fs.createWriteStream(outputPath);
+
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+      });
+  } catch (error) {
+      console.error('An error occurred:', error);
+  }
+}
 
 app.listen(port, () => {
   console.log(`app started and is listening on port ${port}`)
