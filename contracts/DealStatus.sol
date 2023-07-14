@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IAggregatorOracle.sol";
 import "./data-segment/Proof.sol";
 
-import {MarketAPI} from "./mocks/MarketAPIMock.sol";
+import { MarketAPI } from "./mocks/MarketAPIMock.sol";
 import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 // Delta that implements the AggregatorOracle interface
@@ -41,6 +41,8 @@ contract DealStatus is IAggregatorOracle, Proof {
         // Emit the event
         emit CompleteAggregatorRequest(_id, _dealId);
 
+        // TODO: SHOULD INCLUDE MINER ADDRESS WHEN PUSHING TO CIDS
+        
         // save the _dealId if it is not already saved
         bytes memory cid = txIdToCid[_id];
         for (uint i = 0; i < cidToDealIds[cid].length; i++) {
@@ -57,6 +59,7 @@ contract DealStatus is IAggregatorOracle, Proof {
 
     // allDealIds should return all the deal ids created by the aggregator
     function getAllDeals(bytes memory _cid) external view returns (uint64[] memory) {
+        // RETURN ALL MINERS TOO
         return cidToDealIds[_cid];
     }
 
@@ -95,5 +98,9 @@ contract DealStatus is IAggregatorOracle, Proof {
         }
 
         emit ExpiringDeals(expiringDealIDs);
+    }
+
+    function getAllMinersHoldingCID(bytes memory _cid) external returns (address[] memory minerAddresses) {
+        // TODO: implement this
     }
 }
