@@ -6,6 +6,7 @@ const { networkConfig } = require("../helper-hardhat-config")
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
+const path = require('path');
 
 const app = express()
 const port = 1337
@@ -47,8 +48,16 @@ app.post('/api/register_job', async (req, res) => {
     replicationTarget: req.query.replication_target,
   };
 
-  // Register the job's CID in the aggregator contract TODO: This should be replaced with worker job
-  await worker_deal_creation_job(newJob);
+  // Register the job's CID in the aggregator contract
+  console.log("Executing deal creation job from API request with CID: ", newJob.cid);
+  
+  // Deployment instance of aggregator contract
+  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
+
+  // The replication_job should first retrieve all active storage deals 
+  // for the provided cid from the aggregator contract.
+  console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
+  await dealstatus.submit(newJob.cid);
 
   // Send a response back to the client
   return res.status(201).json({ message: "Job registered successfully." });
@@ -109,7 +118,7 @@ async function worker_renewal_job(job) {
   await getActiveDealsPromise;
 }
 
-async function worker_deal_creation_job(job) {
+async function worker_deal_creation_job() {
   // The worker should listen to the `SubmitAggregatorRequest` event in aggregator smart contract, and trigger the following workflow whenever it sees a new `SubmitAggregatorRequest` event
   //
   // 1. Once a new `SubmitAggregatorRequest` event comes in, save the `txId` and `cid`, and proceed to the next step
@@ -118,17 +127,13 @@ async function worker_deal_creation_job(job) {
   // 4. Post the `deal_id`, `inclusion_proof`, and `verifier_data` to the aggregator contract by calling the `complete` method
   //
   // TODO: to be implemented
-  console.log("Executing deal_creation job");
+  console.log("Starting deal creation listener");
   
   // Deployment instance of aggregator contract
   let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
   let jobTxId;
   let jobCID;
-
-  // The replication_job should first retrieve all active storage deals 
-  // for the provided cid from the aggregator contract.
-  console.log("Submitting job to aggregator contract with CID: ", job.cid);
-  await dealstatus.submit(job.cid);
+  let apiKey = process.env.API_KEY;
 
   const submitAggregatorRequestPromise = new Promise((resolve, reject) => {
     dealstatus.once("SubmitAggregatorRequest", async (txId, cid) => {
@@ -137,17 +142,16 @@ async function worker_deal_creation_job(job) {
       jobTxId = txId;
       jobCID = cid;
 
-      let apiKeyResponse = await axios.get('https://auth.estuary.tech/register-new-token');
-      let apiKey = apiKeyResponse.data.token; // Make sure the API key is retrieved correctly from the response.
-
-      await downloadFile(cid);
-      await uploadFileAndMakeDeal(path.join(__dirname, 'download', `${cid}`), apiKey);
-      console.log(apiKey);
+      const downloaded_file_path = await downloadFile(cid);
+      await uploadFileAndMakeDeal(downloaded_file_path, apiKey);
       resolve();
     });
   });
   // Wait for the event to be fired
   await submitAggregatorRequestPromise;
+
+  // TODO: Get deal's information from the response and send it to the aggregator contract
+  await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${apiKey}`)
 }
 
 async function uploadFileAndMakeDeal(filePath, apiKey) {
@@ -174,31 +178,37 @@ async function uploadFileAndMakeDeal(filePath, apiKey) {
 }
 
 async function downloadFile(cid) {
-  try {
-      const url = `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`;
-      const outputPath = path.join(__dirname, 'download', `${cid}`);
+  const directoryPath = path.join(__dirname, 'download');
+  const filePath = path.join(directoryPath, cid);
 
-      const response = await axios({
-          url,
-          method: 'GET',
-          responseType: 'stream',
-      });
+  // Ensure 'download' directory exists
+  fs.mkdir(directoryPath, { recursive: true }, (err) => {
+    if (err) throw err;
+  });
 
-      const writer = fs.createWriteStream(outputPath);
+  // Use Axios to download the file
+  const response = await axios({
+    method: 'GET',
+    url: `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`,
+    responseType: 'stream',
+  });
 
-      response.data.pipe(writer);
-
-      return new Promise((resolve, reject) => {
-          writer.on('finish', resolve);
-          writer.on('error', reject);
-      });
-  } catch (error) {
-      console.error('An error occurred:', error);
-  }
+  const writer = fs.createWriteStream(filePath);
+  
+  // Pipe the response data to the file
+  response.data.pipe(writer);
+  
+  return new Promise((resolve, reject) => {
+    writer.on('finish', () => resolve(filePath));
+    writer.on('error', reject);
+  });
 }
 
 app.listen(port, () => {
   console.log(`app started and is listening on port ${port}`)
+
+  // Start the long-running deal creation job listeneer
+  worker_deal_creation_job().catch(console.error);
 
   setInterval(async () => {
     // The registered jobs should be periodically executed by the node, 
@@ -218,7 +228,7 @@ app.listen(port, () => {
       else if (job.jobType == 'renew') {
         await worker_renewal_job(job);
       }
-      else if (job.jobType == 'renew') {
+      else if (job.jobType == 'repair') {
         await worker_repair_job(job);
       }
       else {
