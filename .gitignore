@@ -12,6 +12,7 @@ typechain
 
 # don't push the environment vars!
 .env
+api/download
 
 # Built application files
 .DS*

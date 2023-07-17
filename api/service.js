@@ -133,6 +133,7 @@ async function worker_deal_creation_job() {
   let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
   let jobTxId;
   let jobCID;
+  let contentID;
   let apiKey = process.env.API_KEY;
 
   const submitAggregatorRequestPromise = new Promise((resolve, reject) => {
@@ -142,16 +143,39 @@ async function worker_deal_creation_job() {
       jobTxId = txId;
       jobCID = cid;
 
-      const downloaded_file_path = await downloadFile(cid);
-      await uploadFileAndMakeDeal(downloaded_file_path, apiKey);
+      contentID = await processFile(jobCID, apiKey);
+      getDealInfos(contentID, apiKey);
+
       resolve();
     });
   });
   // Wait for the event to be fired
   await submitAggregatorRequestPromise;
+}
 
-  // TODO: Get deal's information from the response and send it to the aggregator contract
-  await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${apiKey}`)
+async function processFile(cid, apiKey) {
+  let downloaded_file_path;
+  let contentID;
+
+  try {
+    // Try to download the file
+    downloaded_file_path = await downloadFile(cid);
+  } catch (err) {
+    // If an error occurred, log it and set the path to a predefined error file path
+    console.error(`Failed to download file: ${err}`);
+    // If the downloaded file doesn't exist, check to see if the file by the CID name is already there
+    // If it's there, upload that file instead.
+    downloaded_file_path = `/api/download/${cid}`;
+    if (!fs.existsSync(downloaded_file_path)) {
+      throw new Error('Downloaded file does not exist');
+    }
+  }
+
+  console.log("Downloaded file path: ", downloaded_file_path)
+
+  // Upload the file (either the downloaded one or the error file)
+  contentID = await uploadFileAndMakeDeal(downloaded_file_path, apiKey);
+  return contentID;
 }
 
 async function uploadFileAndMakeDeal(filePath, apiKey) {
@@ -169,40 +193,65 @@ async function uploadFileAndMakeDeal(filePath, apiKey) {
 
       let contentId = response.data.contents.ID;
 
-      console.log('Deal made successfully', response.data);
-
-      // TODO: Get deal's information from the response and send it to the aggregator contract
+      console.log('Deal made successfully, contentID: ', contentId);
+      return contentId;
   } catch (error) {
       console.error('An error occurred:', error);
   }
 }
 
-async function downloadFile(cid) {
-  const directoryPath = path.join(__dirname, 'download');
-  const filePath = path.join(directoryPath, cid);
-
-  // Ensure 'download' directory exists
-  fs.mkdir(directoryPath, { recursive: true }, (err) => {
-    if (err) throw err;
-  });
-
-  // Use Axios to download the file
-  const response = await axios({
-    method: 'GET',
-    url: `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`,
-    responseType: 'stream',
-  });
-
-  const writer = fs.createWriteStream(filePath);
-  
-  // Pipe the response data to the file
-  response.data.pipe(writer);
-  
-  return new Promise((resolve, reject) => {
-    writer.on('finish', () => resolve(filePath));
-    writer.on('error', reject);
-  });
+async function getDealInfos(contentId, apiKey) {
+  // Get deal's information from the response and send it to the aggregator contract
+  // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
+  // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
+  try {
+    let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentId}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      },
+    });
+  } catch (error) {
+    console.error('An error occurred:', error);
+  }
 }
+
+async function downloadFile(cid) {
+  try {
+    const directoryPath = path.join(__dirname, 'download');
+    const filePath = path.join(directoryPath, cid);
+
+    // Ensure 'download' directory exists
+    fs.mkdir(directoryPath, { recursive: true }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
+
+    // Use Axios to download the file
+    const response = await axios({
+      method: 'GET',
+      url: `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`,
+      responseType: 'stream',
+    });
+
+    const writer = fs.createWriteStream(filePath);
+    
+    // Pipe the response data to the file
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => resolve(filePath));
+      writer.on('error', (err) => {
+        console.error(err);
+        reject(err);
+      });
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+}
+
 
 app.listen(port, () => {
   console.log(`app started and is listening on port ${port}`)
