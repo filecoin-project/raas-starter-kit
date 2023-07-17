@@ -144,8 +144,9 @@ async function worker_deal_creation_job() {
       jobCID = cid;
 
       contentID = await processFile(jobCID, apiKey);
-      getDealInfos(contentID, apiKey);
-
+      const dealInfos = getDealInfos(contentID, apiKey);
+      // Send the information to the aggregator contract
+      await dealstatus.complete(txId, dealInfos.deal_id, dealInfos.inclusion_proof, dealInfos.verifier_data);
       resolve();
     });
   });
@@ -165,7 +166,8 @@ async function processFile(cid, apiKey) {
     console.error(`Failed to download file: ${err}`);
     // If the downloaded file doesn't exist, check to see if the file by the CID name is already there
     // If it's there, upload that file instead.
-    downloaded_file_path = `/api/download/${cid}`;
+    const directoryPath = path.join(__dirname, 'download');
+    downloaded_file_path = path.join(directoryPath, cid);
     if (!fs.existsSync(downloaded_file_path)) {
       throw new Error('Downloaded file does not exist');
     }
