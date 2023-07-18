@@ -13,7 +13,9 @@ const port = 1337
 
 // Location of fetched data for each CID from edge
 const dataDownloadDir = path.join(__dirname, 'download');
-
+// Contract deployment instance
+const contractName = "DealStatus";
+const deploymentInstance = "0x3F2f1e692816bd0c2056b482f5F69CcD06eDc94E";
 // Job list to store each job
 let jobs = [];
 
@@ -56,10 +58,9 @@ app.post('/api/register_job', async (req, res) => {
 
   // Register the job's CID in the aggregator contract
   console.log("Executing deal creation job from API request with CID: ", newJob.cid);
-  
-  // Deployment instance of aggregator contract
-  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
 
+  // Deployment instance of aggregator contract
+  let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
   console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
@@ -72,7 +73,7 @@ app.post('/api/register_job', async (req, res) => {
 async function worker_replication_job(job) {
   // Deployment instance of aggregator contract
   console.log("Executing replication job");
-  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
+  let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
@@ -81,19 +82,14 @@ async function worker_replication_job(job) {
   // Periodically, ask for all the active deals that include the data’s cid
   await dealstatus.getActiveDeals(cid);
 
-  const getActiveDealsPromise = new Promise((resolve, reject) => {
-    dealstatus.once("ActiveDeals", async (activeDealIDs) => {
-      // For each replication job, check the current number of replications for the CID
-      console.log("Current active deals, ", activeDealIDs);
-      // TODO: Should be read only
-      if (activeDealIDs.length < job.replicationTarget) {
-        // If the number of replications is less than the target, call aggregator contract to initiate a new deal
-        // Send CID to the aggregator contract
-        await worker_deal_creation_job();
-      }
-      resolve();
-    });
-  });
+  const activeDeals = await this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
+  console.log(activeDeals);
+  
+  if (activeDeals.length < job.replicationTarget) {
+    // If the number of replications is less than the target, call aggregator contract to initiate a new deal
+    // Send CID to the aggregator contract
+    await worker_deal_creation_job();
+  }
 
   // Wait for the event to be fired
   await getActiveDealsPromise;
@@ -106,21 +102,15 @@ async function worker_renewal_job(job) {
 
   // Deployment instance of aggregator contract
   console.log("Executing replication job");
-  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
+  let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
 
   // The replication_job should first retrieve all active storage deals 
   // for the provided cid from the aggregator contract.
   await dealstatus.getExpiringDeals(job.cid);
-
-  const getActiveDealsPromise = new Promise((resolve, reject) => {
-    dealstatus.once("ExpiringDeals", (expiringDealIDs) => {
-      // Sends the cid to the aggregator smart contract for each expiring deal
-      expiringDealIDs.forEach(async () => {
-        // TODO: Should be read only
-        await worker_deal_creation_job(job.cid)
-      });
-      resolve();
-    });
+  const expiringDeals = await this.dealstatus.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
+  // Then, for each expiring deal we send the cid to the aggregator contract to create a new deal
+  expiringDeals.forEach(async () => {
+    await dealstatus.submit(cid);
   });
 
   await getActiveDealsPromise;
@@ -136,7 +126,7 @@ async function worker_deal_creation_job() {
   console.log("Starting deal creation listener");
   
   // Deployment instance of aggregator contract
-  let dealstatus = await ethers.getContractAt("DealStatus", "0x4d0fB4EB0874d49AA36b5FCDb8321599817c723F");
+  let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   let jobTxId;
   let jobCID;
   let contentID;
@@ -173,7 +163,7 @@ async function processFile(cid, apiKey) {
     // If the downloaded file doesn't exist, check to see if the file by the CID name is already there
     // If it's there, upload that file instead.
     
-    downloaded_file_path = path.join(directoryPath, cid);
+    downloaded_file_path = path.join(dataDownloadDir, cid);
     if (!fs.existsSync(downloaded_file_path)) {
       throw new Error('Downloaded file does not exist');
     }
@@ -228,7 +218,7 @@ async function downloadFile(cid) {
     let filePath = path.join(dataDownloadDir, cid);
 
     // Ensure 'download' directory exists
-    fs.mkdir(directoryPath, { recursive: true }, (err) => {
+    fs.mkdir(dataDownloadDir, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
         return;

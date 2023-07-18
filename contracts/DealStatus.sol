@@ -10,6 +10,11 @@ import "./data-segment/Proof.sol";
 import { MarketAPI } from "./mocks/MarketAPIMock.sol";
 import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
+struct Deal {
+    uint64 dealId;
+    address miner;
+}
+
 // Delta that implements the AggregatorOracle interface
 contract DealStatus is IAggregatorOracle, Proof {
 
@@ -64,7 +69,6 @@ contract DealStatus is IAggregatorOracle, Proof {
     }
 
      // getActiveDeals should return all the _cid's active dealIds
-     // TODO: Should be read only
     function getActiveDeals(bytes memory _cid) external view returns (uint64[] memory) {
         // get all the deal ids for the cid
         uint64[] memory activeDealIDs;

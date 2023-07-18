@@ -12,7 +12,8 @@
     "coverage": "hardhat coverage --solcoverjs ./.solcover.js",
     "fuzzing": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
     "chain": "hardhat node --network hardhat --no-deploy",
-    "service": "node api/service.js"
+    "service": "node api/service.js",
+    "deploy-calibration": "npx hardhat deploy --network calibration"
   },
   "license": "MIT",
   "devDependencies": {
