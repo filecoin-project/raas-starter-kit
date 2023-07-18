@@ -27,13 +27,6 @@ class AggregatorBase {
     this.app.listen(this.port, () => {
       console.log(`app started and is listening on port ${this.port}`);
     });
-    setInterval(async () => {
-      this.jobs.forEach(async job => {
-        console.log("Executing on jobs");
-        await this.executeJob(job);
-      });
-    }, 5000);
-
     this.app.post('/api/register_job', async (req, res) => {
       // Saves the provided CID, end_date, and job_type. 
       // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
@@ -54,11 +47,19 @@ class AggregatorBase {
       };
     
       // Register the job
+      console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
       await this.registerJob(newJob);
     
       // Send a response back to the client
       return res.status(201).json({ message: "Job registered successfully." });
     });
+
+    setInterval(async () => {
+      this.jobs.forEach(async job => {
+        console.log("Executing on jobs");
+        await this.executeJob(job);
+      });
+    }, 100000);
   }
 
   async registerJob(newJob) {
@@ -73,10 +74,14 @@ class AggregatorBase {
     console.log("Executing deal creation job from API request with CID: ", newJob.cid);
 
     let dealstatus = await ethers.getContractAt(this.contractName, this.deploymentInstance);
-    await dealstatus.submit(newJob.cid);
-
-    // Push the job into the jobs list
-    this.jobs.push(newJob);
+    try {
+      await dealstatus.submit(newJob.cid);
+      // Push the job into the jobs list
+      this.jobs.push(newJob);
+    }
+    catch (err) {
+      console.log("Error: ", err);
+    }
   }
 
   async executeJob() {
@@ -123,6 +128,7 @@ class EdgeAggregator extends AggregatorBase {
     let apiKey = process.env.API_KEY;
 
     dealstatus.on("SubmitAggregatorRequest", async (txId, cid) => {
+      console.log(`Received SubmitAggregatorRequest event: (${txId}, ${cid}})`);
       jobTxId = txId;
       jobCID = cid;
 
@@ -138,7 +144,7 @@ class EdgeAggregator extends AggregatorBase {
   
     try {
       // Try to download the file
-      downloaded_file_path = await downloadFile(cid);
+      downloaded_file_path = await this.downloadFile(cid);
     } catch (err) {
       // If an error occurred, log it and set the path to a predefined error file path
       console.error(`Failed to download file: ${err}`);
@@ -154,7 +160,7 @@ class EdgeAggregator extends AggregatorBase {
     console.log("Downloaded file path: ", downloaded_file_path)
   
     // Upload the file (either the downloaded one or the error file)
-    contentID = await uploadFileAndMakeDeal(downloaded_file_path, apiKey);
+    contentID = await this.uploadFileAndMakeDeal(downloaded_file_path, apiKey);
     return contentID;
   }
 
@@ -163,11 +169,12 @@ class EdgeAggregator extends AggregatorBase {
     // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
     // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
     try {
-      let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentId}`, {
+      let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentID}`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`
         },
       });
+      console.log("Response: ", response);
     } catch (error) {
       console.error('An error occurred:', error);
     }
@@ -186,27 +193,49 @@ class EdgeAggregator extends AggregatorBase {
           },
       });
 
-      let contentId = response.data.contents.ID;
+      let contentID = response.data.contents.ID;
 
-      console.log('Deal made successfully, contentID: ', contentId);
-      return contentId;
+      console.log('Deal made successfully, contentID: ', contentID);
+      return contentID;
     } catch (error) {
       console.error('An error occurred:', error);
     }
   }
 
   async downloadFile(cid) {
-    // Get deal's information from the response and send it to the aggregator contract
-    // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
-    // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
+    console.log("Downloading file with CID: ", cid);
     try {
-      let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentId}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        },
+      let filePath = path.join(dataDownloadDir, cid);
+  
+      // Ensure 'download' directory exists
+      fs.mkdir(dataDownloadDir, { recursive: true }, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+  
+      // Use Axios to download the file
+      const response = await axios({
+        method: 'GET',
+        url: `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`,
+        responseType: 'stream',
+      });
+  
+      const writer = fs.createWriteStream(filePath);
+      
+      // Pipe the response data to the file
+      response.data.pipe(writer);
+      
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => resolve(filePath));
+        writer.on('error', (err) => {
+          console.error(err);
+          reject(err);
+        });
       });
     } catch (error) {
-      console.error('An error occurred:', error);
+      throw new Error(error);
     }
   }
 
