@@ -16,7 +16,7 @@ const deploymentInstance = "0x3F2f1e692816bd0c2056b482f5F69CcD06eDc94E";
 
 class AggregatorBase {
   constructor(contractName, deploymentInstance, port) {
-    this.app = this.express();
+    this.app = express();
     this.contractName = contractName;
     this.deploymentInstance = deploymentInstance;
     this.jobs = [];
@@ -86,6 +86,12 @@ class AggregatorBase {
 }
 
 class EdgeAggregator extends AggregatorBase {
+  constructor(contractName, deploymentInstance, port) {
+    super(contractName, deploymentInstance, port);
+    // Start the deal creation listener during initialization
+    this.workerDealCreationJob();
+  }
+
   async workerReplicationJob(job) {
     let dealstatus = await ethers.getContractAt(this.contractName, this.deploymentInstance);
     let cid = job.cid;
@@ -116,7 +122,7 @@ class EdgeAggregator extends AggregatorBase {
     let contentID;
     let apiKey = process.env.API_KEY;
 
-    dealstatus.once("SubmitAggregatorRequest", async (txId, cid) => {
+    dealstatus.on("SubmitAggregatorRequest", async (txId, cid) => {
       jobTxId = txId;
       jobCID = cid;
 
@@ -204,7 +210,7 @@ class EdgeAggregator extends AggregatorBase {
     }
   }
 
-  async executeJobs() {
+  async executeJob() {
     this.jobs.forEach(async job => {
       if (job.endDate < Date.now()) {
         this.jobs.splice(this.jobs.indexOf(job), 1);
