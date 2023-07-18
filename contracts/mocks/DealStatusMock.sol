@@ -84,7 +84,6 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
             }
         }
 
-        emit ActiveDeals(activeDealIDs);
         return activeDealIDs;
     }
 
@@ -105,7 +104,6 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
             }
         }
 
-        emit ExpiringDeals(expiringDealIDs);
         return expiringDealIDs;
     }
 

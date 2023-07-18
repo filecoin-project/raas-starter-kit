@@ -11,8 +11,6 @@ const path = require('path');
 // Location of fetched data for each CID from edge
 const dataDownloadDir = path.join(__dirname, 'download');
 // Contract deployment instance
-const contractName = "DealStatus";
-const deploymentInstance = "0x3F2f1e692816bd0c2056b482f5F69CcD06eDc94E";
 
 class AggregatorBase {
   constructor(contractName, deploymentInstance, port) {
@@ -97,26 +95,41 @@ class EdgeAggregator extends AggregatorBase {
     this.workerDealCreationJob();
   }
 
+  // The replication_job should retrieve all active storage deals for the provided cid from the aggregator contract.
+  // If the number of active storage deals is smaller than the replication target,
+  // the worker sends the cid to the aggregator smart contract,
+  // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
   async workerReplicationJob(job) {
     let dealstatus = await ethers.getContractAt(this.contractName, this.deploymentInstance);
     let cid = job.cid;
-    await dealstatus.getActiveDeals(cid);
-
-    dealstatus.once("ActiveDeals", async (activeDealIDs) => {
-      if (activeDealIDs.length < job.replicationTarget) {
-        await this.workerDealCreationJob(job);
+    let activeDealIDs = await dealstatus.getActiveDeals(cid);
+    if (activeDealIDs.length < job.replicationTarget) {
+      try {
+        await dealstatus.submit(cid);
+        // Push the job into the jobs list
+        this.jobs.push(job);
       }
-    });
+      catch (err) {
+        console.log("Error: ", err);
+      }
+    }
   }
 
+  // The renewal job should retrieve all expiring storage deals of the cid.
+  // For the expiring storage deals, the worker sends the cid to the aggregator smart contract,
+  // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
   async workerRenewalJob(job) {
     let dealstatus = await ethers.getContractAt(this.contractName, this.deploymentInstance);
-    await dealstatus.getExpiringDeals(job.cid);
-
-    dealstatus.once("ExpiringDeals", (expiringDealIDs) => {
-      expiringDealIDs.forEach(async () => {
-        await this.workerDealCreationJob(job.cid)
-      });
+    let expiringDealIDs = await dealstatus.getExpiringDeals(job.cid);
+    expiringDealIDs.forEach(async () => {
+      try {
+        await dealstatus.submit(job.cid);
+        // Push the job into the jobs list
+        this.jobs.push(job);
+      }
+      catch (err) {
+        console.log("Error: ", err);
+      }
     });
   }
 

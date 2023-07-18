@@ -22,9 +22,6 @@ contract DealStatus is IAggregatorOracle, Proof {
     mapping (uint256 => bytes) private txIdToCid;
     mapping (bytes => uint64[]) private cidToDealIds; 
 
-    event ActiveDeals(uint64[] activeDealIDs);
-    event ExpiringDeals(uint64[] expiringDealIDs);
-
     constructor() {
         transactionId = 0;
     }
@@ -64,7 +61,7 @@ contract DealStatus is IAggregatorOracle, Proof {
 
     // allDealIds should return all the deal ids created by the aggregator
     function getAllDeals(bytes memory _cid) external view returns (uint64[] memory) {
-        // RETURN ALL MINERS TOO
+        // TODO: RETURN ALL MINERS TOO
         return cidToDealIds[_cid];
     }
 
@@ -84,7 +81,6 @@ contract DealStatus is IAggregatorOracle, Proof {
             }
         }
 
-        emit ActiveDeals(activeDealIDs);
         return activeDealIDs;
     }
 
@@ -105,7 +101,6 @@ contract DealStatus is IAggregatorOracle, Proof {
             }
         }
 
-        emit ExpiringDeals(expiringDealIDs);
         return expiringDealIDs;
     }
 
