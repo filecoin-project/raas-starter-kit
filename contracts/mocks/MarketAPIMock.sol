@@ -78,7 +78,7 @@ library MarketAPI {
 
     /// @notice Get the start epoch and duration(in epochs) of a deal proposal.
     /// @return the start epoch and duration (in epochs) of a deal proposal.
-    function getDealTerm(uint64 dealID) internal returns (MarketTypes.GetDealTermReturn memory) {
+    function getDealTerm(uint64 dealID) internal pure returns (MarketTypes.GetDealTermReturn memory) {
         return MarketTypes.GetDealTermReturn({start: 0, end: 1000});
     }
 
@@ -110,7 +110,7 @@ library MarketAPI {
     /// @notice Fetches activation state for a deal.
     /// @notice This will be available from when the proposal is published until an undefined period after the deal finishes (either normally or by termination).
     /// @return USR_NOT_FOUND if the deal doesn't exist (yet), or EX_DEAL_EXPIRED if the deal has been removed from state.
-    function getDealActivation(uint64 dealID) internal returns (MarketTypes.GetDealActivationReturn memory) {
+    function getDealActivation(uint64 dealID) internal pure returns (MarketTypes.GetDealActivationReturn memory) {
         return MarketTypes.GetDealActivationReturn({activated: 0, terminated: -1});
     }
 

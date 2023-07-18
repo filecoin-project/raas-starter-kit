@@ -11,7 +11,13 @@ const path = require('path');
 const app = express()
 const port = 1337
 
-let jobs = []; // List to store the jobs
+// Location of fetched data for each CID from edge
+const dataDownloadDir = path.join(__dirname, 'download');
+
+// Job list to store each job
+let jobs = [];
+
+// TODO: DEFINE THE SAME INTERFACE AND CREATE DIFFERENT IMPLEMENTATIONS FOR EACH AGGREGATOR
 
 // This file is an example of a service that works with an aggregator, an aggregator contract, and a developer contract
 // to renew expiring storage deals or replicate storage deals to desiring number of replications.
@@ -79,10 +85,11 @@ async function worker_replication_job(job) {
     dealstatus.once("ActiveDeals", async (activeDealIDs) => {
       // For each replication job, check the current number of replications for the CID
       console.log("Current active deals, ", activeDealIDs);
+      // TODO: Should be read only
       if (activeDealIDs.length < job.replicationTarget) {
         // If the number of replications is less than the target, call aggregator contract to initiate a new deal
         // Send CID to the aggregator contract
-        await worker_deal_creation_job(job);
+        await worker_deal_creation_job();
       }
       resolve();
     });
@@ -109,6 +116,7 @@ async function worker_renewal_job(job) {
     dealstatus.once("ExpiringDeals", (expiringDealIDs) => {
       // Sends the cid to the aggregator smart contract for each expiring deal
       expiringDealIDs.forEach(async () => {
+        // TODO: Should be read only
         await worker_deal_creation_job(job.cid)
       });
       resolve();
@@ -125,8 +133,6 @@ async function worker_deal_creation_job() {
   // 2. Create a new deal with an aggregator by retrieving and uploading the data identified by `cid` (The response contains an `ID`, which is the `content_id`)
   // 3. Periodically use the content_id to check the status of the upload, and once `deal_id` becomes non-zero, proceed to the next step
   // 4. Post the `deal_id`, `inclusion_proof`, and `verifier_data` to the aggregator contract by calling the `complete` method
-  //
-  // TODO: to be implemented
   console.log("Starting deal creation listener");
   
   // Deployment instance of aggregator contract
@@ -166,7 +172,7 @@ async function processFile(cid, apiKey) {
     console.error(`Failed to download file: ${err}`);
     // If the downloaded file doesn't exist, check to see if the file by the CID name is already there
     // If it's there, upload that file instead.
-    const directoryPath = path.join(__dirname, 'download');
+    
     downloaded_file_path = path.join(directoryPath, cid);
     if (!fs.existsSync(downloaded_file_path)) {
       throw new Error('Downloaded file does not exist');
@@ -219,8 +225,7 @@ async function getDealInfos(contentId, apiKey) {
 
 async function downloadFile(cid) {
   try {
-    const directoryPath = path.join(__dirname, 'download');
-    const filePath = path.join(directoryPath, cid);
+    let filePath = path.join(dataDownloadDir, cid);
 
     // Ensure 'download' directory exists
     fs.mkdir(directoryPath, { recursive: true }, (err) => {
@@ -258,7 +263,8 @@ async function downloadFile(cid) {
 app.listen(port, () => {
   console.log(`app started and is listening on port ${port}`)
 
-  // Start the long-running deal creation job listeneer
+  // Start the long-running deal creation job listener
+  // TODO: ONLY TRIGGER ONCE FOR EACH AGG EVENT (ONE EVENT CREATES ONE DEAL)
   worker_deal_creation_job().catch(console.error);
 
   setInterval(async () => {

@@ -64,8 +64,10 @@ contract DealStatus is IAggregatorOracle, Proof {
     }
 
      // getActiveDeals should return all the _cid's active dealIds
-    function getActiveDeals(bytes memory _cid) external returns (uint64[] memory activeDealIDs) {
+     // TODO: Should be read only
+    function getActiveDeals(bytes memory _cid) external view returns (uint64[] memory) {
         // get all the deal ids for the cid
+        uint64[] memory activeDealIDs;
         activeDealIDs = this.getAllDeals(_cid);
 
         for (uint i = 0; i < activeDealIDs.length; i++) {
@@ -78,13 +80,14 @@ contract DealStatus is IAggregatorOracle, Proof {
             }
         }
 
-        emit ActiveDeals(activeDealIDs);
+        return activeDealIDs;
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
-    function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (uint64[] memory expiringDealIDs) {
+    function getExpiringDeals(bytes memory _cid, uint64 epochs) external view returns (uint64[] memory) {
         // the logic is similar to the above, but use this api call: 
         // https://github.com/Zondax/filecoin-solidity/blob/master/contracts/v0.8/MarketAPI.sol#LL110C9-L110C9
+        uint64[] memory expiringDealIDs;
         expiringDealIDs = this.getAllDeals(_cid);
 
         for (uint i = 0; i < expiringDealIDs.length; i++) {
@@ -97,7 +100,7 @@ contract DealStatus is IAggregatorOracle, Proof {
             }
         }
 
-        emit ExpiringDeals(expiringDealIDs);
+        return expiringDealIDs;
     }
 
     function getAllMinersHoldingCID(bytes memory _cid) external returns (address[] memory minerAddresses) {
