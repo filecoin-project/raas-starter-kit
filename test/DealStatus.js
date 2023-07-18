@@ -17,7 +17,7 @@ async function deploy(name) {
 describe("Aggregator Tests", function () {
 
     before(async function() {
-        this.dealstatus = await deploy('DealStatus');
+        this.dealstatus = await deploy('DealStatusMock');
     });
 
     describe("Validate Aggregator", function() {
@@ -162,13 +162,11 @@ describe("Aggregator Tests", function () {
         });
         
         it("Should return all the input cid's active dealIds", async function() {
-            const activeDeals = await this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
-            await expect(activeDeals.toString()).to.be.equal("1234,2222");
+            await expect(this.dealstatus.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127")).to.emit(this.dealstatus, "ActiveDeals").withArgs([1234, 2222]);
         });
 
         it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function() {
-            const expiringDeals = await this.dealstatus.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000);
-            await expect(expiringDeals.toString()).to.be.equal("1234,2222");
+            await expect(this.dealstatus.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000)).to.emit(this.dealstatus, "ExpiringDeals").withArgs([1234, 2222]);
         });
         
     });

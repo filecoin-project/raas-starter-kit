@@ -4,10 +4,10 @@ pragma solidity ^0.8.17;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-import "./interfaces/IAggregatorOracle.sol";
-import "./data-segment/Proof.sol";
+import "./IAggregatorOracleMock.sol";
+import "./ProofMock.sol";
 
-import { MarketAPI } from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
+import { MarketAPI } from "./MarketAPIMock.sol";
 import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 struct Deal {
@@ -16,7 +16,7 @@ struct Deal {
 }
 
 // Delta that implements the AggregatorOracle interface
-contract DealStatus is IAggregatorOracle, Proof {
+contract DealStatusMock is IAggregatorOracle, ProofMock {
 
     uint256 private transactionId;
     mapping (uint256 => bytes) private txIdToCid;

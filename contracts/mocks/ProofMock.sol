@@ -4,13 +4,13 @@ pragma solidity ^0.8.17;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-import "./Const.sol";
-import {Cid} from "./Cid.sol";
-import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "./ProofTypes.sol";
-import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
+import "../data-segment/Const.sol";
+import {Cid} from "../data-segment/Cid.sol";
+import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "../data-segment/ProofTypes.sol";
+import {MarketAPI} from "./MarketAPIMock.sol";
 import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
-contract Proof {
+contract ProofMock {
     using Cid for bytes;
     using Cid for bytes32;
 

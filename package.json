@@ -13,7 +13,7 @@
     "fuzzing": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
     "chain": "hardhat node --network hardhat --no-deploy",
     "service": "node api/service.js",
-    "deploy-calibration": "npx hardhat deploy --network calibration"
+    "deploy-calibration": "npx hardhat deploy --network calibrationnet"
   },
   "license": "MIT",
   "devDependencies": {
