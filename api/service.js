@@ -12,7 +12,7 @@ const edgeAggregatorInstance = new EdgeAggregator();
 let jobs = [];
 let dealCreationListenerSet = false;
 
-// We want the state of the app to be persistent. (Write to file)
+// TODO: We want the state of the app to be persistent. (Write to file)
 
 app.listen(port, () => {
   if (!dealCreationListenerSet) {
@@ -157,7 +157,6 @@ async function workerDealCreationListener() {
 async function dataRetrievalListener() {
   // Create a listener for the data retrieval endpoint to complete deals
   // Event listeners for the 'done' and 'error' events
-  console.trace();
   edgeAggregatorInstance.eventEmitter.on('done', dealInfos => {
     console.log('Deal infos:', dealInfos);
   });

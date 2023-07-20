@@ -6,6 +6,7 @@ const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 
 // Location of fetched data for each CID from edge
+// TODO: Lighthouse aggregator
 const dataDownloadDir = path.join(__dirname, 'download');
 
 class EdgeAggregator {
@@ -60,7 +61,7 @@ class EdgeAggregator {
         let delay = initialDelay;
 
         for (let i = 0; i < maxRetries; i++) {
-            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/140`, {
+            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentID}`, {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`
                 },
