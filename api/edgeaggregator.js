@@ -15,7 +15,6 @@ class EdgeAggregator {
     }
 
     async processFile(cid, apiKey, txID) {
-        console.trace();
         let downloaded_file_path;
         let contentID;
 
@@ -66,12 +65,14 @@ class EdgeAggregator {
                     'Authorization': `Bearer ${apiKey}`
                 },
             });
+            console.log("Response: ", response.data);
             let dealInfos = {
                 cid: response.data.data.content_info.cid,
                 deal_id: response.data.data.deal_info.deal_id,
                 inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
                 verifier_data: response.data.data.sub_piece_info.verifier_data,
             }
+            console.log("Deal infos: ", dealInfos);
             if (dealInfos.deal_id != 0) {
                 eventEmitter.emit('done', dealInfos);
                 return;

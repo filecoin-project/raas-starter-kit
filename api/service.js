@@ -115,7 +115,6 @@ async function workerRenewalJob(job) {
 }
 
 async function workerDealCreationListener() {
-  console.trace();
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   let contentID;
   let processedTxIds = new Set();
@@ -123,6 +122,7 @@ async function workerDealCreationListener() {
 
   /// Logic for handling SubmitAggregatorRequest events
   function handleEvent(txID, cid) {
+    console.log(`Submit aggregator event received: (${txID}, ${cid})`);
     if (processedTxIds.has(txID)) {
       console.log(`Ignoring already processed txId: ${txID}`);
       return;
@@ -144,7 +144,7 @@ async function workerDealCreationListener() {
       if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
           dealstatus.once("SubmitAggregatorRequest", handleEvent);
       }
-    })
+    })();
   }
 
   // Start listening to the first event
@@ -157,6 +157,7 @@ async function workerDealCreationListener() {
 async function dataRetrievalListener() {
   // Create a listener for the data retrieval endpoint to complete deals
   // Event listeners for the 'done' and 'error' events
+  console.trace();
   edgeAggregatorInstance.eventEmitter.on('done', dealInfos => {
     console.log('Deal infos:', dealInfos);
   });
