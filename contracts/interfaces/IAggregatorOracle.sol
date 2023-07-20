@@ -5,6 +5,11 @@ import "../data-segment/Proof.sol";
 
 // Behavioral Interface for an aggregator oracle
 interface IAggregatorOracle {
+    struct Deal {
+        uint64 dealId;
+        address miner;
+    }
+
     // Event emitted when a new request is submitted
     event SubmitAggregatorRequest(uint256 indexed id, bytes cid);
 
@@ -17,7 +22,7 @@ interface IAggregatorOracle {
     function complete(uint256 _id, uint64 _dealId, InclusionProof memory _proof, InclusionVerifierData memory _verifierData) external returns (InclusionAuxData memory);
 
     // Get all deal IDs for a specified cid
-    function getAllDeals(bytes memory _cid) external returns (uint64[] memory);
+    function getAllDeals(bytes memory _cid) external returns (Deal[] memory);
 
     // getActiveDeals should return all the _cid's active dealIds
     function getActiveDeals(bytes memory _cid) external returns (uint64[] memory);

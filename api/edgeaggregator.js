@@ -41,8 +41,6 @@ class EdgeAggregator {
             this.jobs.find(job => job.cid == cid).txID = txID;
         }
 
-        console.log("Uploading data: ", downloaded_file_path)
-
         // Upload the file (either the downloaded one or the error file)
         contentID = await this.uploadFileAndMakeDeal(downloaded_file_path, apiKey);
 
@@ -57,16 +55,18 @@ class EdgeAggregator {
         // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
         // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
         try {
-            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentID}`, {
+            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/140`, {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`
                 },
             });
+            console.log(response.data.data.sub_piece_info.inclusion_proof);
+            console.log(response.data.data.sub_piece_info.verifier_data);
             let dealInfos = {
-                cid: response.data.content_info.cid,
-                deal_id: response.data.deal_info.deal_id,
-                inclusion_proof: response.data.subpiece_info.inclusion_proof,
-                verifier_data: response.data.subpiece_info.verifier_data,
+                cid: response.data.data.content_info.cid,
+                deal_id: response.data.data.deal_info.deal_id,
+                inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
+                verifier_data: response.data.data.sub_piece_info.verifier_data,
             }
             return dealInfos
         } catch (error) {

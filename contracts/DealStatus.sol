@@ -10,17 +10,12 @@ import "./data-segment/Proof.sol";
 import { MarketAPI } from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
 import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
-struct Deal {
-    uint64 dealId;
-    address miner;
-}
-
 // Delta that implements the AggregatorOracle interface
 contract DealStatus is IAggregatorOracle, Proof {
 
     uint256 private transactionId;
     mapping (uint256 => bytes) private txIdToCid;
-    mapping (bytes => uint64[]) private cidToDealIds; 
+    mapping (bytes => Deal[]) private cidToDeals; 
 
     constructor() {
         transactionId = 0;
@@ -38,21 +33,21 @@ contract DealStatus is IAggregatorOracle, Proof {
         return transactionId;
     }
 
-    function complete(uint256 _id, uint64 _dealId, InclusionProof memory _proof, InclusionVerifierData memory _verifierData) external returns (InclusionAuxData memory) {
-        require(_id <= transactionId, "Delta.complete: invalid transaction id");
+    function complete(uint256 _id, uint64 _dealId, address _miner, InclusionProof memory _proof, InclusionVerifierData memory _verifierData) external returns (InclusionAuxData memory) {
+        require(_id <= transactionId, "Delta.complete: invalid tx id");
         // Emit the event
         emit CompleteAggregatorRequest(_id, _dealId);
-
-        // TODO: SHOULD INCLUDE MINER ADDRESS WHEN PUSHING TO CIDS
         
         // save the _dealId if it is not already saved
         bytes memory cid = txIdToCid[_id];
-        for (uint i = 0; i < cidToDealIds[cid].length; i++) {
-            if (cidToDealIds[cid][i] == _dealId) {
+        for (uint i = 0; i < cidToDeals[cid].length; i++) {
+            if (cidToDeals[cid][i].dealId == _dealId) {
                 return this.computeExpectedAuxData(_proof, _verifierData);
             }
         }
-        cidToDealIds[cid].push(_dealId);
+
+        Deal memory deal = Deal(_dealId, _miner);
+        cidToDeals[cid].push(deal);
 
         // Perform validation logic
         // return this.computeExpectedAuxDataWithDeal(_dealId, _proof, _verifierData);
@@ -60,9 +55,8 @@ contract DealStatus is IAggregatorOracle, Proof {
     }
 
     // allDealIds should return all the deal ids created by the aggregator
-    function getAllDeals(bytes memory _cid) external view returns (uint64[] memory) {
-        // TODO: RETURN ALL MINERS TOO
-        return cidToDealIds[_cid];
+    function getAllDeals(bytes memory _cid) external view returns (Deal[] memory) {
+        return cidToDeals[_cid];
     }
 
      // getActiveDeals should return all the _cid's active dealIds

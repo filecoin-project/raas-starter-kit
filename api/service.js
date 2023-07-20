@@ -12,6 +12,8 @@ const edgeAggregatorInstance = new EdgeAggregator();
 let jobs = [];
 let dealCreationListenerSet = false;
 
+// We want the state of the app to be persistent. (Write to file)
+
 app.listen(port, () => {
   if (!dealCreationListenerSet) {
     dealCreationListenerSet = true;
@@ -74,6 +76,7 @@ async function registerJob(newJob) {
   await dealstatus.submit(newJob.cid);
   // Push the job into the jobs array if it doesn't already exist (unique by CID)
   if (!jobs.some(job => job.cid == newJob.cid)) {
+    // Update if there exists already (check for CID AND JOBTYPE)
     jobs.push(newJob);
   }
 }
@@ -126,8 +129,6 @@ async function workerDealCreationJob() {
       }
       processedTxIds.add(txID);
       let cidString = ethers.utils.toUtf8String(cid);
-      // Only process the event if the txID is new (i.e. not a repeat event emission)
-      console.log(`Received SubmitAggregatorRequest event: (${txID}, ${cidString}})`);
 
       contentID = await edgeAggregatorInstance.processFile(cidString, apiKey, txID);
       const dealInfos = await edgeAggregatorInstance.getDealInfos(contentID, apiKey);
