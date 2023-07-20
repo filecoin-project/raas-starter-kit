@@ -13,30 +13,45 @@ class EdgeAggregator {
         this.jobs = [];
     }
 
-    async processFile(cid, apiKey) {
+    async processFile(cid, apiKey, txID) {
         let downloaded_file_path;
         let contentID;
 
-        try {
-            // Try to download the file
-            downloaded_file_path = await this.downloadFile(cid);
-        } catch (err) {
-            // If an error occurred, log it and set the path to a predefined error file path
-            console.error(`Failed to download file: ${err}`);
-            return;
+        // If the txID isn't already registered in jobs, add it
+        if (!this.jobs.some(job => job.txID == txID)) {
+            this.jobs.push({
+                txID: txID,
+                cid: cid,
+            });
         }
 
-        console.log("Downloaded file path: ", downloaded_file_path)
+        // Try to download the file only if the txID is new
+        if (!this.jobs.some(job => job.cid == cid)) {
+            try {
+                downloaded_file_path = await this.downloadFile(cid);
+            } catch (err) {
+                // If an error occurred, log it
+                console.error(`Failed to download file: ${err}`);
+                return;
+            }
+        } else {
+            // If the file has already been downloaded, use the existing file
+            downloaded_file_path = path.join(dataDownloadDir, cid);
+            // Update the txID for the job
+            this.jobs.find(job => job.cid == cid).txID = txID;
+        }
+
+        console.log("Uploading data: ", downloaded_file_path)
 
         // Upload the file (either the downloaded one or the error file)
         contentID = await this.uploadFileAndMakeDeal(downloaded_file_path, apiKey);
+
+        // Find the job with the matching CID and update the contentID
+        this.jobs.find(job => job.cid == cid).contentID = contentID;
+
         return contentID;
     }
 
-    // TODO: KEEP THESE AS THE ONLY FUNCTIONALITIES IN THIS CLASS. (FILE DONWLOADING)
-    // MOVE THE CONTRACTS RELATED TASKS OUTSIDE TO ONLY THE NODE.
-
-    // TODO: Push contentIDs into a queue and continue checking for response until a valid dealID is returned (i.e. DEALID nonzero)
     async getDealInfos(contentID, apiKey) {
         // Get deal's information from the response and send it to the aggregator contract
         // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
@@ -47,26 +62,32 @@ class EdgeAggregator {
                     'Authorization': `Bearer ${apiKey}`
                 },
             });
-            console.log("Response: ", response);
+            let dealInfos = {
+                cid: response.data.content_info.cid,
+                deal_id: response.data.deal_info.deal_id,
+                inclusion_proof: response.data.subpiece_info.inclusion_proof,
+                verifier_data: response.data.subpiece_info.verifier_data,
+            }
+            return dealInfos
         } catch (error) {
             console.error('An error occurred:', error);
         }
     }
 
-    async uploadFileAndMakeDeal(file_path, apiKey) {
+    async uploadFileAndMakeDeal(filePath, apiKey) {
         try {
             let formData = new FormData();
-            formData.append('data', fs.createReadStream(file_path));
+            formData.append('data', fs.createReadStream(filePath));
             formData.append('miners', "t017840");
 
-            let response = await axios.post('https://api.estuary.tech/content/add', formData, {
+            let response = await axios.post('https://hackfs-coeus.estuary.tech/edge/api/v1/content/add', formData, {
                 headers: {
                     ...formData.getHeaders(),
                     'Authorization': `Bearer ${apiKey}`
                 },
             });
 
-            let contentID = response.data.contents.ID;
+            let contentID = response.data.contents[0].ID;
 
             console.log('Deal made successfully, contentID: ', contentID);
             return contentID;

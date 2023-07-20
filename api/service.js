@@ -10,9 +10,13 @@ const deploymentInstance = "0xfFc3401D5cf95D559FdAee4df72F769190b26b5d";
 const EdgeAggregator = require('./edgeaggregator.js');
 const edgeAggregatorInstance = new EdgeAggregator();
 let jobs = [];
+let dealCreationListenerSet = false;
 
 app.listen(port, () => {
-  workerDealCreationJob().catch(console.error);
+  if (!dealCreationListenerSet) {
+    dealCreationListenerSet = true;
+    workerDealCreationJob();
+  }
 
   console.log(`app started and is listening on port ${port}`);
   
@@ -109,21 +113,28 @@ async function workerRenewalJob(job) {
 async function workerDealCreationJob() {
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   let contentID;
+  let processedTxIds = new Set();
   let apiKey = process.env.API_KEY;
 
-  dealstatus.on("SubmitAggregatorRequest", async (txId, cid) => {
-    // console.log(dealstatus.listenerCount("SubmitAggregatorRequest"));
-    // Don't register duplicate jobs
-    if (jobs.some(job => job.txId == txId)) {
-      return;
-    }
-    let cidString = ethers.utils.toUtf8String(cid);
-    console.log(`Received SubmitAggregatorRequest event: (${txId}, ${cidString}})`);
+  if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
+    dealstatus.removeAllListeners("SubmitAggregatorRequest");
+    dealstatus.on("SubmitAggregatorRequest", async (txID, cid) => {
+      // console.log(dealstatus.listenerCount("SubmitAggregatorRequest"));
+      if (processedTxIds.has(txID)) {
+        console.log(`Ignoring already processed txId: ${txID}`);
+        return;
+      }
+      processedTxIds.add(txID);
+      let cidString = ethers.utils.toUtf8String(cid);
+      // Only process the event if the txID is new (i.e. not a repeat event emission)
+      console.log(`Received SubmitAggregatorRequest event: (${txID}, ${cidString}})`);
 
-    contentID = await edgeAggregatorInstance.processFile(cidString, apiKey);
-    const dealInfos = edgeAggregatorInstance.getDealInfos(contentID, apiKey);
-    await dealstatus.complete(txId, dealInfos.deal_id, dealInfos.inclusion_proof, dealInfos.verifier_data);
-  });
+      contentID = await edgeAggregatorInstance.processFile(cidString, apiKey, txID);
+      const dealInfos = await edgeAggregatorInstance.getDealInfos(contentID, apiKey);
+      console.log(dealInfos);
+      await dealstatus.complete(txID, dealInfos.deal_id, dealInfos.inclusion_proof, dealInfos.verifier_data);
+    });
+  }
 }
 
 async function executeJob() {
