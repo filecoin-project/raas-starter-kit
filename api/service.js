@@ -17,7 +17,8 @@ let dealCreationListenerSet = false;
 app.listen(port, () => {
   if (!dealCreationListenerSet) {
     dealCreationListenerSet = true;
-    workerDealCreationJob();
+    workerDealCreationListener();
+    dataRetrievalListener();
   }
 
   console.log(`app started and is listening on port ${port}`);
@@ -113,29 +114,56 @@ async function workerRenewalJob(job) {
   });
 }
 
-async function workerDealCreationJob() {
+async function workerDealCreationListener() {
+  console.trace();
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   let contentID;
   let processedTxIds = new Set();
   let apiKey = process.env.API_KEY;
 
-  if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
-    dealstatus.removeAllListeners("SubmitAggregatorRequest");
-    dealstatus.on("SubmitAggregatorRequest", async (txID, cid) => {
-      // console.log(dealstatus.listenerCount("SubmitAggregatorRequest"));
-      if (processedTxIds.has(txID)) {
-        console.log(`Ignoring already processed txId: ${txID}`);
-        return;
-      }
-      processedTxIds.add(txID);
-      let cidString = ethers.utils.toUtf8String(cid);
+  /// Logic for handling SubmitAggregatorRequest events
+  function handleEvent(txID, cid) {
+    if (processedTxIds.has(txID)) {
+      console.log(`Ignoring already processed txId: ${txID}`);
+      return;
+    }
 
+    processedTxIds.add(txID);
+    let cidString = ethers.utils.toUtf8String(cid);
+
+    (async () => {
       contentID = await edgeAggregatorInstance.processFile(cidString, apiKey, txID);
-      const dealInfos = await edgeAggregatorInstance.getDealInfos(contentID, apiKey);
-      console.log(dealInfos);
-      await dealstatus.complete(txID, dealInfos.deal_id, dealInfos.inclusion_proof, dealInfos.verifier_data);
-    });
+      // Once the deal returned by getDealInfos no longer contains a deal_id of 0, complete the deal
+      // Should be working alongside other instances of invocations of this function
+      // To process the dealInfos before completion of deal is handled at dataRetrievalListener
+      // Max retries: 2000
+      // Initial delay: 1000 ms
+      edgeAggregatorInstance.processDealInfos(2000, 1000, contentID, apiKey);
+      
+      // After processing this event, reattach the event listener
+      if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
+          dealstatus.once("SubmitAggregatorRequest", handleEvent);
+      }
+    })
   }
+
+  // Start listening to the first event
+  // Recursively call back into handleEvent to process the next event
+  if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
+    dealstatus.once("SubmitAggregatorRequest", handleEvent);
+  }
+}
+
+async function dataRetrievalListener() {
+  // Create a listener for the data retrieval endpoint to complete deals
+  // Event listeners for the 'done' and 'error' events
+  edgeAggregatorInstance.eventEmitter.on('done', dealInfos => {
+    console.log('Deal infos:', dealInfos);
+  });
+
+  edgeAggregatorInstance.eventEmitter.on('error', error => {
+    console.error('An error occurred:', error);
+  });
 }
 
 async function executeJob() {
@@ -145,9 +173,10 @@ async function executeJob() {
     }
     if (job.jobType == 'replication') {
       console.log("Processing replication");
-      // await workerReplicationJob(job);
+      await workerReplicationJob(job);
     } else if (job.jobType == 'renew') {
-      // await workerRenewalJob(job);
+      console.log("Processing renewal")
+      await workerRenewalJob(job);
     } else {
       console.log("Error: Invalid job type");
       jobs.splice(jobs.indexOf(job), 1);
