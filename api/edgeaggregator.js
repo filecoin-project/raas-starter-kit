@@ -62,7 +62,7 @@ class EdgeAggregator {
         let delay = initialDelay;
 
         for (let i = 0; i < maxRetries; i++) {
-            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/1502`, {
+            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/${contentID}`, {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`
                 },
