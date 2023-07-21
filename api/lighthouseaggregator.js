@@ -10,7 +10,8 @@ const sleep = require('util').promisify(setTimeout);
 // TODO: Lighthouse aggregator
 const dataDownloadDir = path.join(__dirname, 'download');
 
-class EdgeAggregator {
+class LighthouseAggregator {
+    /*
     constructor() {
         this.jobs = [];
         this.eventEmitter = new EventEmitter();
@@ -146,6 +147,7 @@ class EdgeAggregator {
             throw new Error(error);
         }
     }
+    */
 }
 
-module.exports = EdgeAggregator;
+module.exports = LighthouseAggregator;

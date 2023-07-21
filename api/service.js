@@ -4,21 +4,32 @@ const { ethers } = require("hardhat");
 const { networkConfig } = require("../helper-hardhat-config")
 
 const app = express();
+const fs = require('fs');
 const port = 1337;
 const contractName = "DealStatus";
 const deploymentInstance = "0xfFc3401D5cf95D559FdAee4df72F769190b26b5d";
 const EdgeAggregator = require('./edgeaggregator.js');
+// Two aggregator types are provided: EdgeAggregator and LighthouseAggregator
+// EdgeAggregator is the default aggregator
 const edgeAggregatorInstance = new EdgeAggregator();
-let jobs = [];
+let stateFilePath = "./cache/state.json";
+let jobs = loadState();
 let dealCreationListenerSet = false;
-
-// TODO: We want the state of the app to be persistent. (Write to file)
+// Store state in cache folder on shutdown
+let apiKey = process.env.API_KEY;
 
 app.listen(port, () => {
   if (!dealCreationListenerSet) {
     dealCreationListenerSet = true;
     workerDealCreationListener();
     dataRetrievalListener();
+    // Call edge aggreagator's processDealInfos to handle
+    // Incomplete deals from shutdown
+    loadState();
+    for (let job of edgeAggregatorInstance.jobs) {
+      let jobContentID = job.contentID;
+      edgeAggregatorInstance.processDealInfos(1, 1, jobContentID, null);
+    }
   }
 
   console.log(`app started and is listening on port ${port}`);
@@ -28,32 +39,22 @@ app.listen(port, () => {
         console.log("Executing on jobs");
         await executeJob(job);
     });
-  }, 100000);
+  }, 43200000);
 });
 app.post('/api/register_job', async (req, res) => {
   // Saves the provided CID, end_date, and job_type.
   // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
 
-  // Check if cid is a string
-  let cidBytes; 
-  try {
-    cidBytes = ethers.utils.toUtf8Bytes(req.query.cid); // this will throw an error if cid is not valid bytes or hex string
-  } catch {
-    console.log("Error: CID must be a hexadecimal string or bytes");
-    return res.status(400).json({
-        error: 'CID must be a hexadecimal string or bytes'
-    });
-  }
   // Create a new job object from the request
   let newJob = {
-    cid: cidBytes,
+    cid: req.query.cid,
     endDate: req.query.end_date,
     jobType: req.query.job_type,
     replicationTarget: req.query.replication_target,
   };
 
   // Register the job
-  console.log("Submitting job to aggregator contract with CID: ", ethers.utils.toUtf8String(newJob.cid));
+  console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
   await registerJob(newJob);
 
   // Send a response back to the client
@@ -61,6 +62,24 @@ app.post('/api/register_job', async (req, res) => {
     message: "Job registered successfully."
   });
 });
+
+function loadState() {
+  // check if the state file exists
+  if (fs.existsSync(stateFilePath)) {
+      // if it exists, read it and parse the JSON
+      const rawData = fs.readFileSync(stateFilePath);
+      return JSON.parse(rawData);
+  } else {
+      // if it doesn't exist, return an empty array
+      return [];
+  }
+}
+
+function saveState() {
+  // write the current state to the file
+  const data = JSON.stringify(jobs);
+  fs.writeFileSync(stateFilePath, data);
+}
 
 async function registerJob(newJob) {
   // TODO: Add validation for the new job, for example:
@@ -71,14 +90,23 @@ async function registerJob(newJob) {
   // 5. Check if newJob.replicationTarget is a number
 
   // Register the job's CID in the aggregator contract
-  console.log("Executing deal creation job from API request with CID: ", ethers.utils.toUtf8String(newJob.cid));
+  try {
+    ethers.utils.toUtf8Bytes(newJob.cid); // this will throw an error if cid is not valid bytes or hex string
+  } catch {
+    console.log("Error: CID must be a hexadecimal string or bytes");
+    return res.status(400).json({
+        error: 'CID must be a hexadecimal string or bytes'
+    });
+  }
+  console.log("Executing deal creation job from API request with CID: ", newJob.cid);
 
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
-  await dealstatus.submit(newJob.cid);
+  await dealstatus.submit(ethers.utils.toUtf8Bytes(newJob.cid));
   // Push the job into the jobs array if it doesn't already exist (unique by CID)
   if (!jobs.some(job => job.cid == newJob.cid)) {
     // Update if there exists already (check for CID AND JOBTYPE)
     jobs.push(newJob);
+    saveState();
   }
 }
 
@@ -88,7 +116,11 @@ async function registerJob(newJob) {
 // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
 async function workerReplicationJob(job) {
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
-  let cid = job.cid;
+  try {
+    cid = ethers.utils.toUtf8Bytes(job.cid); // this will throw an error if cid is not valid bytes or hex string
+  } catch {
+    console.log("Error: CID must be a hexadecimal string or bytes");
+  }
   let activeDealIDs = await dealstatus.getActiveDeals(cid);
   if (activeDealIDs.length < job.replicationTarget) {
     try {
@@ -118,7 +150,6 @@ async function workerDealCreationListener() {
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   let contentID;
   let processedTxIds = new Set();
-  let apiKey = process.env.API_KEY;
 
   /// Logic for handling SubmitAggregatorRequest events
   function handleEvent(txID, cid) {
@@ -157,8 +188,29 @@ async function workerDealCreationListener() {
 async function dataRetrievalListener() {
   // Create a listener for the data retrieval endpoint to complete deals
   // Event listeners for the 'done' and 'error' events
+  let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
   edgeAggregatorInstance.eventEmitter.on('done', dealInfos => {
-    console.log('Deal infos:', dealInfos);
+    // Process the dealInfos
+    let txID = dealInfos.txID;
+    let dealID = dealInfos.deal_id;
+    let inclusionProof = {
+      proofIndex: {
+        index: dealInfos.inclusion_proof.proofIndex.index,
+        path: dealInfos.inclusion_proof.proofIndex.path.map(value => ethers.utils.hexlify(value)),
+      },
+      proofSubtree: {
+        index: dealInfos.inclusion_proof.proofSubtree.index,
+        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => ethers.utils.hexlify(value)),
+      },
+    }
+    let verifierData = dealInfos.verifier_data;
+    try {
+      dealstatus.complete(txID, dealID, inclusionProof, verifierData);
+    }
+    catch (err) {
+      console.log("Error: ", err);
+    }
+    console.log("Deal completed with TX ID: ", txID);
   });
 
   edgeAggregatorInstance.eventEmitter.on('error', error => {
