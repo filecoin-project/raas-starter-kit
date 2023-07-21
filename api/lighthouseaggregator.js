@@ -5,19 +5,19 @@ const path = require('path');
 const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
+const { exec } = require('child_process');
 
 // Location of fetched data for each CID from edge
 // TODO: Lighthouse aggregator
 const dataDownloadDir = path.join(__dirname, 'download');
 
 class LighthouseAggregator {
-    /*
     constructor() {
         this.jobs = [];
         this.eventEmitter = new EventEmitter();
     }
 
-    async processFile(cid, apiKey, txID) {
+    async processFile(cid, txID) {
         let downloaded_file_path;
         let contentID;
 
@@ -46,7 +46,7 @@ class LighthouseAggregator {
         }
 
         // Upload the file (either the downloaded one or the error file)
-        contentID = await this.uploadFileAndMakeDeal(downloaded_file_path, apiKey);
+        contentID = await this.uploadFileAndMakeDeal(downloaded_file_path);
 
         // Find the job with the matching CID and update the contentID
         this.jobs.find(job => job.cid == cid).contentID = contentID;
@@ -54,25 +54,37 @@ class LighthouseAggregator {
         return contentID;
     }
 
-    async processDealInfos(maxRetries, initialDelay, contentID, apiKey) {
-        // Get deal's information from the response and send it to the aggregator contract
-        // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
-        // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
-        // Emit an event once the deal_id becomes nonzero - we must retry the poll since it may take
-        // up to 24 hours to get a nonzero deal_id
+    async processDealInfos(maxRetries, initialDelay, lighthouse_cid) {
         let delay = initialDelay;
 
         for (let i = 0; i < maxRetries; i++) {
-            let response = await axios.get(`https://hackfs-coeus.estuary.tech/edge/open/status/content/1502`, {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                },
-            });
-            let dealInfos = {
-                txID: this.jobs.find(job => job.contentID == contentID).txID,
-                deal_id: response.data.data.deal_info.deal_id,
-                inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
-                verifier_data: response.data.data.sub_piece_info.verifier_data,
+            let dealInfos;
+            try {
+                await new Promise((resolve, reject) => {
+                    exec(`lighthouse-web3 deal-status ${lighthouse_cid}`, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error('An error occurred:', error);
+                            reject(error);
+                        } else if (stderr) {
+                            console.error('An error occurred:', stderr);
+                            reject(new Error(stderr));
+                        } else {
+                            // this may need to be adjusted depending on the actual output of the CLI command
+                            let response = JSON.parse(stdout);
+                            dealInfos = {
+                                txID: this.jobs.find(job => job.contentID == contentID).txID,
+                                deal_id: response.deal_info.deal_id,
+                                inclusion_proof: response.sub_piece_info.inclusion_proof,
+                                verifier_data: response.sub_piece_info.verifier_data,
+                            };
+                            resolve();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('An error occurred:', error);
+                // If an error occurred, break the loop
+                break;
             }
             if (dealInfos.deal_id != 0) {
                 this.eventEmitter.emit('done', dealInfos);
@@ -84,35 +96,35 @@ class LighthouseAggregator {
             await sleep(delay);
             delay *= 2;
         }
-        this.eventEmitter.emit('error', new Error('All retries failed, totaling: ', maxRetries));
+        this.eventEmitter.emit('error', new Error(`All retries failed, totaling: ${maxRetries}`));
     }
 
-    async uploadFileAndMakeDeal(filePath, apiKey) {
+    async uploadFileAndMakeDeal(filePath) {
         try {
-            let formData = new FormData();
-            formData.append('data', fs.createReadStream(filePath));
-            formData.append('miners', "t017840");
-
-            let response = await axios.post('https://hackfs-coeus.estuary.tech/edge/api/v1/content/add', formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'Authorization': `Bearer ${apiKey}`
-                },
+            return new Promise((resolve, reject) => {
+                exec(`lighthouse-web3 upload ${filePath}`, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error('An error occurred:', error);
+                        reject(error);
+                    } else if (stderr) {
+                        console.error('An error occurred:', stderr);
+                        reject(new Error(stderr));
+                    } else {
+                        let response = JSON.parse(stdout);
+                        console.log(response);
+                        resolve(response);
+                    }
+                });
             });
-
-            let contentID = response.data.contents[0].ID;
-
-            console.log('Deal made successfully, contentID: ', contentID);
-            return contentID;
         } catch (error) {
             console.error('An error occurred:', error);
         }
     }
 
-    async downloadFile(cid) {
-        console.log("Downloading file with CID: ", cid);
+    async downloadFile(lighthouse_cid) {
+        console.log("Downloading file with CID: ", lighthouse_cid);
         try {
-            let filePath = path.join(dataDownloadDir, cid);
+            let filePath = path.join(dataDownloadDir, lighthouse_cid);
 
             // Ensure 'download' directory exists
             fs.mkdir(dataDownloadDir, {
@@ -127,7 +139,7 @@ class LighthouseAggregator {
             // Use Axios to download the file
             const response = await axios({
                 method: 'GET',
-                url: `https://hackfs-coeus.estuary.tech/edge/gw/${cid}`,
+                url: `https://gateway.lighthouse.storage/ipfs/${lighthouse_cid}`,
                 responseType: 'stream',
             });
 
@@ -147,7 +159,6 @@ class LighthouseAggregator {
             throw new Error(error);
         }
     }
-    */
 }
 
 module.exports = LighthouseAggregator;
