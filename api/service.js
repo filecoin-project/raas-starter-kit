@@ -7,13 +7,17 @@ const app = express();
 const fs = require('fs');
 const port = 1337;
 const contractName = "DealStatus";
-const deploymentInstance = "0xfFc3401D5cf95D559FdAee4df72F769190b26b5d";
+const deploymentInstance = "0x53260D40c73E49815B53eBDA25f114b17E7E322B";
 const EdgeAggregator = require('./edgeaggregator.js');
+const LighthouseAggregator = require('./lighthouseaggregator');
+const private_key = process.env.PRIVATE_KEY;
+const miner = new ethers.Wallet(private_key, ethers.provider).address;
 // Two aggregator types are provided: EdgeAggregator and LighthouseAggregator
 // EdgeAggregator is the default aggregator
 const edgeAggregatorInstance = new EdgeAggregator();
-let stateFilePath = "./cache/state.json";
-let jobs = loadState();
+const lighthouseAggregatorInstance = new LighthouseAggregator();
+let stateFilePath = "./cache/service_state.json";
+let jobs;
 let dealCreationListenerSet = false;
 // Store state in cache folder on shutdown
 let apiKey = process.env.API_KEY;
@@ -23,12 +27,20 @@ app.listen(port, () => {
     dealCreationListenerSet = true;
     workerDealCreationListener();
     dataRetrievalListener();
+    jobs = loadState();
+    
     // Call edge aggreagator's processDealInfos to handle
     // Incomplete deals from shutdown
-    loadState();
     for (let job of edgeAggregatorInstance.jobs) {
       let jobContentID = job.contentID;
-      edgeAggregatorInstance.processDealInfos(1, 1, jobContentID, null);
+      // Continuously retry up to 48 hours
+      edgeAggregatorInstance.processDealInfos(18, 1000, jobContentID, apiKey);
+    }
+
+    for (let job of lighthouseAggregatorInstance.jobs) {
+      let lighthouse_cid = job.lighthouse_cid;
+      // Continuously retry up to 48 hours
+      lighthouseAggregatorInstance.processDealInfos(18, 1000, lighthouse_cid);
     }
   }
 
@@ -46,11 +58,13 @@ app.post('/api/register_job', async (req, res) => {
   // The registered jobs should be periodically executed by the node, e.g. every 12 hours, until the specified end_date is reached.
 
   // Create a new job object from the request
+  // TODO: Add support for lighthouse via. another field for aggregator
   let newJob = {
     cid: req.query.cid,
     endDate: req.query.end_date,
     jobType: req.query.job_type,
     replicationTarget: req.query.replication_target,
+    aggregator: req.query.aggregator,
   };
 
   // Register the job
@@ -136,7 +150,8 @@ async function workerReplicationJob(job) {
 // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
 async function workerRenewalJob(job) {
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
-  let expiringDealIDs = await dealstatus.getExpiringDeals(job.cid);
+  // Get all expiring deals for the job's CID within a certain epoch
+  let expiringDealIDs = await dealstatus.getExpiringDeals(job.cid, 1000);
   expiringDealIDs.forEach(async () => {
     try {
       await dealstatus.submit(job.cid);
@@ -163,13 +178,25 @@ async function workerDealCreationListener() {
     let cidString = ethers.utils.toUtf8String(cid);
 
     (async () => {
-      contentID = await edgeAggregatorInstance.processFile(cidString, apiKey, txID);
-      // Once the deal returned by getDealInfos no longer contains a deal_id of 0, complete the deal
-      // Should be working alongside other instances of invocations of this function
-      // To process the dealInfos before completion of deal is handled at dataRetrievalListener
-      // Max retries: 2000
-      // Initial delay: 1000 ms
-      edgeAggregatorInstance.processDealInfos(2000, 1000, contentID, apiKey);
+      // Match CID to aggregator type by first finding the matching job in jobs list
+      let job = jobs.find(job => job.cid == cidString);
+      if (job.aggregator == 'lighthouse') {
+        lighthouseAggregatorInstance.processFile(cidString, txID);
+        lighthouseAggregatorInstance.processDealInfos(18, 1000, cidString);
+      } else if (job.aggregator == 'edge') {
+        // Once the deal returned by getDealInfos no longer contains a deal_id of 0, complete the deal
+        // Should be working alongside other instances of invocations of this function
+        // To process the dealInfos before completion of deal is handled at dataRetrievalListener
+        // Max retries: 18 (48 hours)
+        // Initial delay: 1000 ms
+        contentID = await edgeAggregatorInstance.processFile(cidString, apiKey, txID);
+        edgeAggregatorInstance.processDealInfos(18, 1000, contentID, apiKey);
+      }
+      else {
+        console.log("Error: Invalid aggregator type for job with CID: ", cidString);
+        // Remove the job if the aggregator type is invalid
+        jobs.splice(jobs.indexOf(job), 1);
+      }
       
       // After processing this event, reattach the event listener
       if (dealstatus.listenerCount("SubmitAggregatorRequest") === 0) {
@@ -186,9 +213,10 @@ async function workerDealCreationListener() {
 }
 
 async function dataRetrievalListener() {
-  // Create a listener for the data retrieval endpoint to complete deals
+  // Create a listener for the data retrieval endpoints to complete deals
   // Event listeners for the 'done' and 'error' events
   let dealstatus = await ethers.getContractAt(contractName, deploymentInstance);
+  // Listener for edge aggregator
   edgeAggregatorInstance.eventEmitter.on('done', dealInfos => {
     // Process the dealInfos
     let txID = dealInfos.txID;
@@ -214,6 +242,35 @@ async function dataRetrievalListener() {
   });
 
   edgeAggregatorInstance.eventEmitter.on('error', error => {
+    console.error('An error occurred:', error);
+  });
+
+  // Listener for lighthouse aggregator
+  lighthouseAggregatorInstance.eventEmitter.on('done', dealInfos => {
+    // Process the dealInfos
+    let txID = dealInfos.txID;
+    let dealID = dealInfos.deal_id;
+    let inclusionProof = {
+      proofIndex: {
+        index: dealInfos.inclusion_proof.proofIndex.index,
+        path: dealInfos.inclusion_proof.proofIndex.path.map(value => ethers.utils.hexlify(value)),
+      },
+      proofSubtree: {
+        index: dealInfos.inclusion_proof.proofSubtree.index,
+        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => ethers.utils.hexlify(value)),
+      },
+    }
+    let verifierData = dealInfos.verifier_data;
+    try {
+      dealstatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+    }
+    catch (err) {
+      console.log("Error: ", err);
+    }
+    console.log("Deal completed with TX ID: ", txID);
+  });
+
+  lighthouseAggregatorInstance.eventEmitter.on('error', error => {
     console.error('An error occurred:', error);
   });
 }

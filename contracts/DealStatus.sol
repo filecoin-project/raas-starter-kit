@@ -7,15 +7,14 @@ pragma solidity ^0.8.17;
 import "./interfaces/IAggregatorOracle.sol";
 import "./data-segment/Proof.sol";
 
-import { MarketAPI } from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
-import { MarketTypes } from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
+import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
+import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 // Delta that implements the AggregatorOracle interface
 contract DealStatus is IAggregatorOracle, Proof {
-
     uint256 private transactionId;
-    mapping (uint256 => bytes) private txIdToCid;
-    mapping (bytes => Deal[]) private cidToDeals; 
+    mapping(uint256 => bytes) private txIdToCid;
+    mapping(bytes => Deal[]) private cidToDeals;
 
     constructor() {
         transactionId = 0;
@@ -23,7 +22,7 @@ contract DealStatus is IAggregatorOracle, Proof {
 
     function submit(bytes memory _cid) external returns (uint256) {
         // Increment the transaction ID
-        transactionId++;    
+        transactionId++;
 
         // Save _cid
         txIdToCid[transactionId] = _cid;
@@ -33,14 +32,20 @@ contract DealStatus is IAggregatorOracle, Proof {
         return transactionId;
     }
 
-    function complete(uint256 _id, uint64 _dealId, address _miner, InclusionProof memory _proof, InclusionVerifierData memory _verifierData) external returns (InclusionAuxData memory) {
+    function complete(
+        uint256 _id,
+        uint64 _dealId,
+        address _miner,
+        InclusionProof memory _proof,
+        InclusionVerifierData memory _verifierData
+    ) external returns (InclusionAuxData memory) {
         require(_id <= transactionId, "Delta.complete: invalid tx id");
         // Emit the event
         emit CompleteAggregatorRequest(_id, _dealId);
-        
+
         // save the _dealId if it is not already saved
         bytes memory cid = txIdToCid[_id];
-        for (uint i = 0; i < cidToDeals[cid].length; i++) {
+        for (uint256 i = 0; i < cidToDeals[cid].length; i++) {
             if (cidToDeals[cid][i].dealId == _dealId) {
                 return this.computeExpectedAuxData(_proof, _verifierData);
             }
@@ -59,17 +64,17 @@ contract DealStatus is IAggregatorOracle, Proof {
         return cidToDeals[_cid];
     }
 
-     // getActiveDeals should return all the _cid's active dealIds
-    function getActiveDeals(bytes memory _cid) external returns (uint64[] memory) {
+    // getActiveDeals should return all the _cid's active dealIds
+    function getActiveDeals(bytes memory _cid) external returns (Deal[] memory) {
         // get all the deal ids for the cid
-        uint64[] memory activeDealIDs;
+        Deal[] memory activeDealIDs;
         activeDealIDs = this.getAllDeals(_cid);
 
-        for (uint i = 0; i < activeDealIDs.length; i++) {
-            uint64 dealID = activeDealIDs[i];
+        for (uint256 i = 0; i < activeDealIDs.length; i++) {
+            uint64 dealID = activeDealIDs[i].dealId;
             // get the deal's expiration epoch
             MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI.getDealActivation(dealID);
-            
+
             if (dealActivationStatus.terminated > 0 || dealActivationStatus.activated == -1) {
                 delete activeDealIDs[i];
             }
@@ -79,26 +84,22 @@ contract DealStatus is IAggregatorOracle, Proof {
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
-    function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (uint64[] memory) {
-        // the logic is similar to the above, but use this api call: 
+    function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (Deal[] memory) {
+        // the logic is similar to the above, but use this api call:
         // https://github.com/Zondax/filecoin-solidity/blob/master/contracts/v0.8/MarketAPI.sol#LL110C9-L110C9
-        uint64[] memory expiringDealIDs;
+        Deal[] memory expiringDealIDs;
         expiringDealIDs = this.getAllDeals(_cid);
 
-        for (uint i = 0; i < expiringDealIDs.length; i++) {
-            uint64 dealID = expiringDealIDs[i];
+        for (uint256 i = 0; i < expiringDealIDs.length; i++) {
+            uint64 dealID = expiringDealIDs[i].dealId;
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealID);
-            
+
             if (block.timestamp < uint64(dealTerm.end) - epochs) {
                 delete expiringDealIDs[i];
             }
         }
 
         return expiringDealIDs;
-    }
-
-    function getAllMinersHoldingCID(bytes memory _cid) external returns (address[] memory minerAddresses) {
-        // TODO: implement this
     }
 }

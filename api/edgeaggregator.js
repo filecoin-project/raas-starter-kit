@@ -7,11 +7,16 @@ const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
 
 // Location of fetched data for each CID from edge
-// TODO: Lighthouse aggregator
 const dataDownloadDir = path.join(__dirname, 'download');
+let stateFilePath = "./cache/edge_agg_state.json";
 
 class EdgeAggregator {
     constructor() {
+        // Each job is an object with the following properties:
+        // txID: the transaction ID of the job
+        // cid: the CID of the file
+        // contentID: the content ID of the file
+        // 
         this.jobs = [];
         this.eventEmitter = new EventEmitter();
     }
@@ -75,9 +80,11 @@ class EdgeAggregator {
             }
             if (dealInfos.deal_id != 0) {
                 this.eventEmitter.emit('done', dealInfos);
+                // Remove the job from the list
+                this.jobs = this.jobs.filter(job => job.contentID != contentID);
                 return;
             }
-            console.log(`Retrying... Attempt number ${i + 1}`);
+            console.log(`Processing deal with ContentID ${contentID}. Retrying... Attempt number ${i + 1}`);
 
             // Double the delay for the next loop iteration.
             await sleep(delay);
@@ -101,7 +108,7 @@ class EdgeAggregator {
 
             let contentID = response.data.contents[0].ID;
 
-            console.log('Deal made successfully, contentID: ', contentID);
+            console.log('Deal uploaded successfully, contentID: ', contentID);
             return contentID;
         } catch (error) {
             console.error('An error occurred:', error);
@@ -145,6 +152,24 @@ class EdgeAggregator {
         } catch (error) {
             throw new Error(error);
         }
+    }
+
+    loadState() {
+        // check if the state file exists
+        if (fs.existsSync(stateFilePath)) {
+            // if it exists, read it and parse the JSON
+            const rawData = fs.readFileSync(stateFilePath);
+            return JSON.parse(rawData);
+        } else {
+            // if it doesn't exist, return an empty array
+            return [];
+        }
+      }
+      
+    saveState() {
+        // write the current state to the file
+        const data = JSON.stringify(this.jobs);
+        fs.writeFileSync(stateFilePath, data);
     }
 }
 

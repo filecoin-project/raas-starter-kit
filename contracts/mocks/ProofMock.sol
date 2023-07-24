@@ -6,7 +6,14 @@ pragma solidity ^0.8.17;
 
 import "../data-segment/Const.sol";
 import {Cid} from "../data-segment/Cid.sol";
-import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "../data-segment/ProofTypes.sol";
+import {
+    ProofData,
+    InclusionProof,
+    InclusionVerifierData,
+    InclusionAuxData,
+    SegmentDesc,
+    Fr32
+} from "../data-segment/ProofTypes.sol";
 import {MarketAPI} from "./MarketAPIMock.sol";
 import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
@@ -15,41 +22,28 @@ contract ProofMock {
     using Cid for bytes32;
 
     // computeExpectedAuxData computes the expected auxiliary data given an inclusion proof and the data provided by the verifier.
-    function computeExpectedAuxData(
-        InclusionProof memory ip,
-        InclusionVerifierData memory verifierData
-    ) public pure returns (InclusionAuxData memory) {
-        require(
-            isPow2(uint64(verifierData.sizePc)),
-            "Size of piece provided by verifier is not power of two"
-        );
+    function computeExpectedAuxData(InclusionProof memory ip, InclusionVerifierData memory verifierData)
+        public
+        pure
+        returns (InclusionAuxData memory)
+    {
+        require(isPow2(uint64(verifierData.sizePc)), "Size of piece provided by verifier is not power of two");
 
         bytes32 commPc = verifierData.commPc.cidToPieceCommitment();
         bytes32 assumedCommPa = computeRoot(ip.proofSubtree, commPc);
 
-        (bool ok, uint64 assumedSizePa) = checkedMultiply(
-            uint64(1) << uint64(ip.proofSubtree.path.length),
-            uint64(verifierData.sizePc)
-        );
+        (bool ok, uint64 assumedSizePa) =
+            checkedMultiply(uint64(1) << uint64(ip.proofSubtree.path.length), uint64(verifierData.sizePc));
         require(ok, "assumedSizePa overflow");
 
         uint64 dataOffset = ip.proofSubtree.index * uint64(verifierData.sizePc);
-        SegmentDesc memory en = makeDataSegmentIndexEntry(
-            Fr32(commPc),
-            dataOffset,
-            uint64(verifierData.sizePc)
-        );
+        SegmentDesc memory en = makeDataSegmentIndexEntry(Fr32(commPc), dataOffset, uint64(verifierData.sizePc));
         bytes32 enNode = truncatedHash(serialize(en));
         bytes32 assumedCommPa2 = computeRoot(ip.proofIndex, enNode);
-        require(
-            assumedCommPa == assumedCommPa2,
-            "aggregator's data commitments don't match"
-        );
+        require(assumedCommPa == assumedCommPa2, "aggregator's data commitments don't match");
 
-        (bool ok2, uint64 assumedSizePa2) = checkedMultiply(
-            uint64(1) << uint64(ip.proofIndex.path.length),
-            BYTES_IN_DATA_SEGMENT_ENTRY
-        );
+        (bool ok2, uint64 assumedSizePa2) =
+            checkedMultiply(uint64(1) << uint64(ip.proofIndex.path.length), BYTES_IN_DATA_SEGMENT_ENTRY);
         require(ok2, "assumedSizePau64 overflow");
         require(assumedSizePa == assumedSizePa2, "aggregator's data size doesn't match");
 
@@ -70,42 +64,27 @@ contract ProofMock {
     }
 
     // validateInclusionAuxData validates that the deal is activated and not terminated.
-    function validateInclusionAuxData(
-        uint64 dealId,
-        InclusionAuxData memory inclusionAuxData
-    ) internal {
+    function validateInclusionAuxData(uint64 dealId, InclusionAuxData memory inclusionAuxData) internal {
         // check that the deal is not terminated
-        MarketTypes.GetDealActivationReturn memory dealActivation = MarketAPI.getDealActivation(
-            dealId
-        );
+        MarketTypes.GetDealActivationReturn memory dealActivation = MarketAPI.getDealActivation(dealId);
         require(dealActivation.terminated <= 0, "Deal is terminated");
         require(dealActivation.activated > 0, "Deal is not activated");
 
-        MarketTypes.GetDealDataCommitmentReturn memory dealDataCommitment = MarketAPI
-            .getDealDataCommitment(dealId);
-        require(
-            keccak256(dealDataCommitment.data) == keccak256(inclusionAuxData.commPa),
-            "Deal commD doesn't match"
-        );
+        MarketTypes.GetDealDataCommitmentReturn memory dealDataCommitment = MarketAPI.getDealDataCommitment(dealId);
+        require(keccak256(dealDataCommitment.data) == keccak256(inclusionAuxData.commPa), "Deal commD doesn't match");
         require(dealDataCommitment.size == inclusionAuxData.sizePa, "Deal size doesn't match");
     }
 
     // validateIndexEntry validates that the index entry is in the correct position in the index.
     function validateIndexEntry(InclusionProof memory ip, uint64 assumedSizePa2) internal pure {
         uint64 idxStart = indexAreaStart(assumedSizePa2);
-        (bool ok3, uint64 indexOffset) = checkedMultiply(
-            ip.proofIndex.index,
-            BYTES_IN_DATA_SEGMENT_ENTRY
-        );
+        (bool ok3, uint64 indexOffset) = checkedMultiply(ip.proofIndex.index, BYTES_IN_DATA_SEGMENT_ENTRY);
         require(ok3, "indexOffset overflow");
         require(indexOffset >= idxStart, "index entry at wrong position");
     }
 
     // computeRoot computes the root of a Merkle tree given a leaf and a Merkle proof.
-    function computeRoot(
-        ProofData memory d,
-        bytes32 subtree
-    ) public pure returns (bytes32) {
+    function computeRoot(ProofData memory d, bytes32 subtree) public pure returns (bytes32) {
         require(d.path.length < 64, "merkleproofs with depths greater than 63 are not supported");
         require(d.index >> d.path.length == 0, "index greater than width of the tree");
 
@@ -137,8 +116,8 @@ contract ProofMock {
     }
 
     // maxIndexEntriesInDeal returns the maximum number of index entries that can be stored in a deal of the given size.
-    function maxIndexEntriesInDeal(uint256 dealSize) internal pure returns (uint) {
-        uint res = (uint(1) << uint256(log2Ceil(uint64(dealSize / 2048 / ENTRY_SIZE)))); //& ((1 << 256) - 1);
+    function maxIndexEntriesInDeal(uint256 dealSize) internal pure returns (uint256) {
+        uint256 res = (uint256(1) << uint256(log2Ceil(uint64(dealSize / 2048 / ENTRY_SIZE)))); //& ((1 << 256) - 1);
         if (res < 4) {
             return 4;
         }
@@ -173,19 +152,12 @@ contract ProofMock {
     }
 
     // verify verifies that the given leaf is present in the merkle tree with the given root.
-    function verify(
-        ProofData memory proof,
-        bytes32 root,
-        bytes32 leaf
-    ) public pure returns (bool) {
+    function verify(ProofData memory proof, bytes32 root, bytes32 leaf) public pure returns (bool) {
         return computeRoot(proof, leaf) == root;
     }
 
     // processProof computes the root of the merkle tree given the leaf and the inclusion proof.
-    function processProof(
-        ProofData memory proof,
-        bytes32 leaf
-    ) internal pure returns (bytes32) {
+    function processProof(ProofData memory proof, bytes32 leaf) internal pure returns (bytes32) {
         bytes32 computedHash = leaf;
         for (uint256 i = 0; i < proof.path.length; i++) {
             computedHash = hashNode(computedHash, proof.path[i]);
@@ -208,11 +180,11 @@ contract ProofMock {
     }
 
     // makeDataSegmentIndexEntry creates a new data segment index entry.
-    function makeDataSegmentIndexEntry(
-        Fr32 memory commP,
-        uint64 offset,
-        uint64 size
-    ) internal pure returns (SegmentDesc memory) {
+    function makeDataSegmentIndexEntry(Fr32 memory commP, uint64 offset, uint64 size)
+        internal
+        pure
+        returns (SegmentDesc memory)
+    {
         SegmentDesc memory en;
         en.commDs = bytes32(commP.value);
         en.offset = offset;
@@ -240,17 +212,17 @@ contract ProofMock {
         }
 
         // Pad offset (little-endian)
-        for (uint i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 8; i++) {
             result[MERKLE_TREE_NODE_SIZE + i] = bytes1(uint8(sd.offset >> (i * 8)));
         }
 
         // Pad size (little-endian)
-        for (uint i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 8; i++) {
             result[MERKLE_TREE_NODE_SIZE + 8 + i] = bytes1(uint8(sd.size >> (i * 8)));
         }
 
         // Pad checksum
-        for (uint i = 0; i < 16; i++) {
+        for (uint256 i = 0; i < 16; i++) {
             result[MERKLE_TREE_NODE_SIZE + 16 + i] = sd.checksum[i];
         }
 
@@ -273,7 +245,7 @@ contract ProofMock {
     }
 
     // log2Ceil returns the ceiling of the base-2 logarithm of the given value.
-    function log2Ceil(uint64 value) internal pure returns (int) {
+    function log2Ceil(uint64 value) internal pure returns (int256) {
         if (value <= 1) {
             return 0;
         }
@@ -281,11 +253,11 @@ contract ProofMock {
     }
 
     // log2Floor returns the floor of the base-2 logarithm of the given value.
-    function log2Floor(uint64 value) internal pure returns (int) {
+    function log2Floor(uint64 value) internal pure returns (int256) {
         if (value == 0) {
             return 0;
         }
-        uint zeros = leadingZeros64(value);
-        return int(64 - zeros - 1);
+        uint256 zeros = leadingZeros64(value);
+        return int256(64 - zeros - 1);
     }
 }

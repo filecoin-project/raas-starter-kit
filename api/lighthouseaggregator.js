@@ -10,7 +10,10 @@ const { exec } = require('child_process');
 // Location of fetched data for each CID from edge
 // TODO: Lighthouse aggregator
 const dataDownloadDir = path.join(__dirname, 'download');
+let stateFilePath = "./cache/lighthouse_agg_state.json";
 
+// The Lighthouse aggregator assumes that you already have a lighthouse CLI fully set up on your machine.
+// You can find instructions on how to do that [here](https://docs.lighthouse.storage/lighthouse-1/cli-tool/overview)
 class LighthouseAggregator {
     constructor() {
         this.jobs = [];
@@ -46,12 +49,12 @@ class LighthouseAggregator {
         }
 
         // Upload the file (either the downloaded one or the error file)
-        contentID = await this.uploadFileAndMakeDeal(downloaded_file_path);
+        lighthouse_cid = await this.uploadFileAndMakeDeal(downloaded_file_path);
 
         // Find the job with the matching CID and update the contentID
-        this.jobs.find(job => job.cid == cid).contentID = contentID;
+        this.jobs.find(job => job.cid == cid).lighthouse_cid = lighthouse_cid;
 
-        return contentID;
+        return lighthouse_cid;
     }
 
     async processDealInfos(maxRetries, initialDelay, lighthouse_cid) {
@@ -158,6 +161,24 @@ class LighthouseAggregator {
         } catch (error) {
             throw new Error(error);
         }
+    }
+
+    loadState() {
+        // check if the state file exists
+        if (fs.existsSync(stateFilePath)) {
+            // if it exists, read it and parse the JSON
+            const rawData = fs.readFileSync(stateFilePath);
+            return JSON.parse(rawData);
+        } else {
+            // if it doesn't exist, return an empty array
+            return [];
+        }
+      }
+      
+    saveState() {
+        // write the current state to the file
+        const data = JSON.stringify(this.jobs);
+        fs.writeFileSync(stateFilePath, data);
     }
 }
 
