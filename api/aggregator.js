@@ -18,7 +18,6 @@ if (!edgeDealDownloadEndpoint || !edgeDealInfosEndpoint || !edgeDealUploadEndpoi
 
 let stateFilePath = "./cache/agg_state.json";
 
-// TODO: All API endpoints should be environment variables
 class Aggregator {
     constructor() {
         // Each job is an object with the following properties:
