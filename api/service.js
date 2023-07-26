@@ -159,14 +159,15 @@ async function executeRepairJob(job) {
       params: params
     };
     
-    axios.post('https://api.node.glif.io', body, {
+    axios.post(process.env.LOTUS_RPC, body, {
         headers: {
             'Content-Type': 'application/json'
         }
     })
     .then(async response => {
         //If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
-        if (response.data.expiration - response.data.activation < job.epochs)
+        const currentBlockHeight = await getMessagesInTipset()
+        if (currentBlockHeight - response.data.expiration < job.epochs)
         {
           try {
             await dealStatus.submit(job.cid);
@@ -296,6 +297,28 @@ async function initializeDataRetrievalListener() {
   lighthouseAggregatorInstance.eventEmitter.on('Error', error => {
     console.error('An error occurred:', error);
   });
+}
+
+async function getMessagesInTipset() {
+  const url = 'https://api.node.glif.io';
+  const data = {
+    "jsonrpc": "2.0",
+    "method": "Filecoin.ChainGetMessagesInTipset",
+    "params": [
+      [
+        {
+          "/": "-1",
+        }
+      ]
+    ],
+  };
+
+  try {
+    const response = await axios.post(url, data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 async function executeJobs() {
