@@ -24,11 +24,11 @@ class LighthouseAggregator {
         // contentID: the content ID of the file
         this.eventEmitter = new EventEmitter();
         // Load previous app job state
-        this.jobs = this.loadState();
-        console.log("Loaded previous aggregator state: ", this.jobs);
+        this.aggregatorJobs = this.loadState();
+        console.log("Loaded previous LighthouseAggregator state: ", this.aggregatorJobs);
         // Upload any files that don't have a content ID yet (in case of interruption)
         // For any files that do, poll the deal status
-        this.jobs.forEach(job => {
+        this.aggregatorJobs.forEach(job => {
             if (!job.contentID) {
                 this.downloadFile(job.cid);
                 this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
@@ -43,19 +43,15 @@ class LighthouseAggregator {
         let downloaded_file_path;
         let contentID;
 
-        // If the txID isn't already registered in jobs, add it
-        if (!this.jobs.some(job => job.txID == txID)) {
-            this.jobs.push({
-                txID: txID,
-                cid: cid,
-            });
-            this.saveState();
-        }
-
-        // Try to download the file only if the txID is new
-        if (!this.jobs.some(job => job.cid == cid)) {
+        // Try to download the file only if the cid is new
+        if (!this.aggregatorJobs.some(job => job.cid == cid)) {
             try {
                 downloaded_file_path = await this.downloadFile(cid);
+                this.aggregatorJobs.push({
+                    txID: txID,
+                    cid: cid,
+                });
+                this.saveState();
             } catch (err) {
                 // If an error occurred, log it
                 console.error(`Failed to download file: ${err}`);
@@ -65,7 +61,7 @@ class LighthouseAggregator {
             // If the file has already been downloaded, use the existing file
             downloaded_file_path = path.join(dataDownloadDir, cid);
             // Update the txID for the job
-            this.jobs.find(job => job.cid == cid).txID = txID;
+            this.aggregatorJobs.find(job => job.cid == cid).txID = txID;
         }
 
         // Upload the file (either the downloaded one or the error file)
@@ -73,7 +69,7 @@ class LighthouseAggregator {
 
         // Find the job with the matching CID and update the contentID
         // ContentID depends on whether or not content was uploaded to edge or lighthouse.
-        this.jobs.find(job => job.cid == cid).contentID = contentID;
+        this.aggregatorJobs.find(job => job.cid == cid).contentID = contentID;
         this.saveState();
 
         return contentID;
@@ -99,13 +95,13 @@ class LighthouseAggregator {
                             reject(new Error());
                         } else {
                             const dealInfos = {
-                                txID: this.jobs.find(job => job.contentID == contentID).txID,
+                                txID: this.aggregatorJobs.find(job => job.contentID == contentID).txID,
                                 deal_id: deal_id,
                                 inclusion_proof: response.sub_piece_info.inclusion_proof,
                                 verifier_data: response.sub_piece_info.verifier_data,
                             };
                             this.eventEmitter.emit('DealReceived', dealInfos);
-                            this.jobs = this.jobs.filter(job => job.contentID != contentID);
+                            this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
                             this.saveState();
                             resolve();
                         }
@@ -179,7 +175,7 @@ class LighthouseAggregator {
       
     saveState() {
         // write the current state to the file
-        const data = JSON.stringify(this.jobs);
+        const data = JSON.stringify(this.aggregatorJobs);
         fs.writeFileSync(stateFilePath, data);
     }
 
