@@ -46,6 +46,7 @@ app.post('/api/register_job', async (req, res) => {
     jobType: req.query.job_type,
     replicationTarget: req.query.replication_target,
     aggregator: req.query.aggregator,
+    epochs: req.query.epochs
   };
 
   console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
@@ -127,7 +128,7 @@ async function executeReplicationJob(job) {
 async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
-  const expiringDeals = await dealStatus.getExpiringDeals(job.cid, process.env.EPOCH ? process.env.EPOCH : 1000);
+  const expiringDeals = await dealStatus.getExpiringDeals(job.cid, job.epochs ? job.epochs : 1000);
   expiringDeals.forEach(async () => {
     try {
       await dealStatus.submit(job.cid);
@@ -163,8 +164,16 @@ async function executeRepairJob(job) {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => {
-        console.log("Repair job executed:", response.data);
+    .then(async response => {
+        //If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
+        if (response.data.expiration - response.data.activation < job.epochs)
+        {
+          try {
+            await dealStatus.submit(job.cid);
+          } catch (error) {
+            console.log("Error: ", error);
+          }
+        }
     })
     .catch(error => {
         console.error('Error:', error);

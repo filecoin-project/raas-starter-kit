@@ -36,9 +36,11 @@ class EdgeAggregator {
         this.apiKey = process.env.EDGE_API_KEY;
         this.aggregatorJobs.forEach(async job => {
             if (!job.contentID) {
-                this.downloadFile(job.cid);
+                console.log("Redownloading file with CID: ", job.cid);
+                await this.downloadFile(job.cid);
                 const contentID = await this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
                 job.contentID = contentID;
+                this.saveState();
             }
             this.processDealInfos(18, 1000, job.contentID);
         });
@@ -105,7 +107,7 @@ class EdgeAggregator {
                 this.saveState();
                 return;
             }
-            console.log(`Processing deal with ContentID ${contentID}. Retrying... Attempt number ${i + 1}`);
+            console.log(`Processing deal with Edge ContentID ${contentID}. Retrying... Attempt number ${i + 1}`);
 
             // Double the delay for the next loop iteration.
             await sleep(delay);

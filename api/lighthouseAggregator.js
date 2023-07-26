@@ -5,6 +5,7 @@ const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
 const { spawn } = require('child_process');
+const lighthouse = require('@lighthouse-web3/sdk');
 
 // Location of fetched data for each CID from edge
 const dataDownloadDir = path.join(__dirname, 'download');
@@ -15,13 +16,14 @@ if (!lighthouseDealDownloadEndpoint) {
 
 let stateFilePath = "./cache/lighthouse_agg_state.json";
 
+// TODO: Fix
 /// A new aggregator implementation should be created for each aggregator contract
 class LighthouseAggregator {
     constructor() {
         // Each job is an object with the following properties:
         // txID: the transaction ID of the job
         // cid: the CID of the file
-        // contentID: the content ID of the file
+        // lighthouse_cid: the lighthouse CID of the file
         this.eventEmitter = new EventEmitter();
         // Load previous app job state
         this.aggregatorJobs = this.loadState();
@@ -29,19 +31,21 @@ class LighthouseAggregator {
         // Upload any files that don't have a content ID yet (in case of interruption)
         // For any files that do, poll the deal status
         this.aggregatorJobs.forEach(async job => {
-            if (!job.contentID) {
-                this.downloadFile(job.cid);
-                const contentID = await this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
-                job.contentID = contentID;
+            if (!job.lighthouse_cid) {
+                console.log("Redownloading file with CID: ", job.cid);
+                await this.downloadFile(job.cid);
+                const lighthouse_cid = await this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
+                job.lighthouse_cid = lighthouse_cid;
+                this.saveState();
             }
-            this.processDealInfos(18, 1000, job.contentID);
+            this.processDealInfos(18, 1000, job.lighthouse_cid);
         });
         console.log("Aggregator initialized, polling for deals...");
     }
 
     async processFile(cid, txID) {
         let downloaded_file_path;
-        let contentID;
+        let lighthouse_cid;
 
         // Try to download the file only if the cid is new
         if (!this.aggregatorJobs.some(job => job.cid == cid)) {
@@ -61,51 +65,48 @@ class LighthouseAggregator {
             this.aggregatorJobs.find(job => job.cid == cid).txID = txID;
         }
 
-        // Upload the file (either the downloaded one or the error file)
-        contentID = await this.uploadFileAndMakeDeal(downloaded_file_path);
+        // Wait for the file to be downloaded
+        await sleep(2500);
 
-        // Find the job with the matching CID and update the contentID
-        // ContentID depends on whether or not content was uploaded to edge or lighthouse.
-        this.aggregatorJobs.find(job => job.cid == cid).contentID = contentID;
+        // Upload the file (either the downloaded one or the error file)
+        lighthouse_cid = await this.uploadFileAndMakeDeal(downloaded_file_path);
+
+        // Find the job with the matching CID and update the lighthouse_cid
+        // lighthouse_cid depends on whether or not content was uploaded to edge or lighthouse.
+        this.aggregatorJobs.find(job => job.cid == cid).lighthouse_cid = lighthouse_cid;
         this.saveState();
 
-        return contentID;
+        return lighthouse_cid;
     }
 
-    async processDealInfos(maxRetries, initialDelay, contentID) {
+    async processDealInfos(maxRetries, initialDelay, lighthouse_cid) {
         let delay = initialDelay;
     
         for (let i = 0; i < maxRetries; i++) {
-            await new Promise((resolve, reject) => {
-                exec(`lighthouse-web3 deal-status ${lighthouse_cid}`, (error, stdout, stderr) => {
-                    if (error) {
-                        console.error('An error occurred:', error);
-                        reject(error);
-                    } else if (stderr) {
-                        console.error('An error occurred:', stderr);
-                        reject(new Error(stderr));
-                    } else {
-                        let response = JSON.parse(stdout);
-                        let deal_id = response.deal_info.deal_id;
-    
-                        if (deal_id == 0) {
-                            reject(new Error());
-                        } else {
-                            const dealInfos = {
-                                txID: this.aggregatorJobs.find(job => job.contentID == contentID).txID,
-                                deal_id: deal_id,
-                                inclusion_proof: response.sub_piece_info.inclusion_proof,
-                                verifier_data: response.sub_piece_info.verifier_data,
-                            };
-                            this.eventEmitter.emit('DealReceived', dealInfos);
-                            this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
-                            this.saveState();
-                            resolve();
-                        }
+            await new Promise(async (resolve, reject) => {
+                const response = await lighthouse.dealStatus(lighthouse_cid)
+                if (response.data.length == 0) {
+                    reject(new Error());
+                } else {
+                    let dealInfos = {
+                        txID: this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid).txID,
+                        deal_id: response.data.data.deal_info.deal_id,
+                        inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
+                        verifier_data: response.data.data.sub_piece_info.verifier_data,
                     }
-                });
+                    if (dealInfos.deal_id != 0) {
+                        this.eventEmitter.emit('DealReceived', dealInfos);
+                        // Remove the job from the list
+                        this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
+                        this.saveState();
+                        resolve();
+                    }
+                    else {
+                        reject(new Error());
+                    }
+                }
             }).catch(() => {
-                console.log(`Processing deal with ContentID ${contentID}. Retrying... Attempt number ${i + 1}`);
+                console.log(`Processing deal with lighthouse_cid ${lighthouse_cid}. Retrying... Attempt number ${i + 1}`);
             });
     
             await sleep(delay);
@@ -116,20 +117,10 @@ class LighthouseAggregator {
 
     async uploadFileAndMakeDeal(filePath) {
         try {
-            return new Promise((resolve, reject) => {
-                exec(`lighthouse-web3 upload ${filePath}`, (error, stdout, stderr) => {
-                    if (error) {
-                        console.error('An error occurred:', error);
-                        reject(error);
-                    } else if (stderr) {
-                        console.error('An error occurred:', stderr);
-                        reject(new Error(stderr));
-                    } else {
-                        let response = JSON.parse(stdout);
-                        resolve(response);
-                    }
-                });
-            });
+            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY);
+            const lighthouse_cid = response.data.Hash;
+            console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid);
+            return lighthouse_cid;
         } catch (error) {
             console.error('An error occurred:', error);
         }
