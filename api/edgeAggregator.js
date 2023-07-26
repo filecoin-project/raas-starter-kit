@@ -53,10 +53,7 @@ class EdgeAggregator {
         if (!this.aggregatorJobs.some(job => job.cid == cid)) {
             try {
                 downloaded_file_path = await this.downloadFile(cid);
-                this.aggregatorJobs.push({
-                    txID: txID,
-                    cid: cid,
-                });
+                this.enqueueJob(cid, txID)
                 this.saveState();
             } catch (err) {
                 // If an error occurred, log it
@@ -184,10 +181,10 @@ class EdgeAggregator {
         fs.writeFileSync(stateFilePath, data);
     }
 
-    enqueueJob(txID, cid) {
+    enqueueJob(cid, txID) {
         this.aggregatorJobs.push({
-            txID: txID,
             cid: cid,
+            txID: txID,
         });
     }
 

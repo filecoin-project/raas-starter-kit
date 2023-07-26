@@ -28,13 +28,13 @@ class LighthouseAggregator {
         console.log("Loaded previous LighthouseAggregator state: ", this.aggregatorJobs);
         // Upload any files that don't have a content ID yet (in case of interruption)
         // For any files that do, poll the deal status
-        this.aggregatorJobs.forEach(job => {
+        this.aggregatorJobs.forEach(async job => {
             if (!job.contentID) {
                 this.downloadFile(job.cid);
-                this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
-            } else {
-                this.processDealInfos(18, 1000, job.contentID);
+                const contentID = await this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
+                job.contentID = contentID;
             }
+            this.processDealInfos(18, 1000, job.contentID);
         });
         console.log("Aggregator initialized, polling for deals...");
     }
@@ -47,10 +47,7 @@ class LighthouseAggregator {
         if (!this.aggregatorJobs.some(job => job.cid == cid)) {
             try {
                 downloaded_file_path = await this.downloadFile(cid);
-                this.aggregatorJobs.push({
-                    txID: txID,
-                    cid: cid,
-                });
+                this.enqueueJob(cid, txID);
                 this.saveState();
             } catch (err) {
                 // If an error occurred, log it
@@ -159,6 +156,8 @@ class LighthouseAggregator {
         this.saveResponseToFile(response, filePath)
             .then(filePath => console.log(`File saved at ${filePath}`))
             .catch(err => console.error(`Error saving file: ${err}`));
+
+        return filePath
     }
 
     loadState() {
@@ -177,6 +176,17 @@ class LighthouseAggregator {
         // write the current state to the file
         const data = JSON.stringify(this.aggregatorJobs);
         fs.writeFileSync(stateFilePath, data);
+    }
+
+    enqueueJob(cid, txID) {
+        this.aggregatorJobs.push({
+            cid: cid,
+            txID: txID,
+        });
+    }
+
+    dequeueJob(txID, cid) {
+        this.aggregatorJobs = this.aggregatorJobs.filter(job => job.txID != txID && job.cid != cid);
     }
 
     saveResponseToFile(response, filePath) {
