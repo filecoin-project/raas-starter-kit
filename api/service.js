@@ -11,8 +11,6 @@ const contractName = "DealStatus";
 const contractInstance = "0x53260D40c73E49815B53eBDA25f114b17E7E322B";
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
-const privateKey = process.env.PRIVATE_KEY;
-const minerWallet = new ethers.Wallet(privateKey, ethers.provider).address;
 const dataDownloadDir = path.join(__dirname, 'download');
 
 let stateFilePath = "./cache/service_state.json";
@@ -139,6 +137,41 @@ async function executeRenewalJob(job) {
   });
 }
 
+// Execute the repair job
+// The renewal job should retrieve all expiring storage deals of the cid.
+// For the expiring storage deals, the worker sends the cid to the aggregator smart contract,
+// and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
+async function executeRepairJob(job) {
+  const dealStatus = await ethers.getContractAt(contractName, contractInstance);
+  const method = StateMinerActiveSectors;
+  // Get all (deal_id, miner) containing the data’s cid
+  const allDeals = await dealStatus.getAllDeals(job.cid);
+  allDeals.forEach(async deal => {
+    const miner = deal.miner;
+    const deal_id = deal.deal_id;
+    const params = [miner, [{"/": deal_id}]]
+
+    const body = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: method,
+      params: params
+    };
+    
+    axios.post('https://api.node.glif.io', body, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log("Repair job executed:", response.data);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+  });
+}
+
 // Initialize the listener for the Deal Creation event
 async function initializeDealCreationListener() {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
@@ -214,7 +247,7 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     try {
-      dealStatus.complete(txID, dealID, inclusionProof, verifierData);
+      dealStatus.complete(txID, dealID, process.env.MINER, inclusionProof, verifierData);
     }
     catch (err) {
       console.log("Error: ", err);
@@ -243,7 +276,7 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     try {
-      dealStatus.complete(txID, dealID, inclusionProof, verifierData);
+      dealStatus.complete(txID, dealID, process.env.MINER, inclusionProof, verifierData);
     }
     catch (err) {
       console.log("Error: ", err);
@@ -267,6 +300,9 @@ async function executeJobs() {
     } else if (job.jobType == 'renew') {
       console.log("Processing renewal");
       await executeRenewalJob(job);
+    } else if (job.jobType == 'repair') {
+      console.log("Processing repair");
+      await executeRepairJob(job);
     } else {
       console.log("Error: Invalid job type");
       storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);

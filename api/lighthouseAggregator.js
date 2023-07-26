@@ -4,7 +4,7 @@ const path = require('path');
 const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 
 // Location of fetched data for each CID from edge
 const dataDownloadDir = path.join(__dirname, 'download');
@@ -30,6 +30,7 @@ class LighthouseAggregator {
         // For any files that do, poll the deal status
         this.jobs.forEach(job => {
             if (!job.contentID) {
+                this.downloadFile(job.cid);
                 this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
             } else {
                 this.processDealInfos(18, 1000, job.contentID);
@@ -132,7 +133,6 @@ class LighthouseAggregator {
                         reject(new Error(stderr));
                     } else {
                         let response = JSON.parse(stdout);
-                        console.log(response);
                         resolve(response);
                     }
                 });
@@ -142,8 +142,8 @@ class LighthouseAggregator {
         }
     }
 
-    async downloadFile(cid, filePath = path.join(dataDownloadDir, cid)) {
-        console.log("Downloading file with CID: ", cid);
+    async downloadFile(lighthouse_cid, filePath = path.join(dataDownloadDir, lighthouse_cid)) {
+        console.log("Downloading file with CID: ", lighthouse_cid);
         let response;
     
         // Ensure 'download' directory exists
@@ -160,7 +160,7 @@ class LighthouseAggregator {
             responseType: 'stream',
         });
 
-        saveResponseToFile(response, filePath)
+        this.saveResponseToFile(response, filePath)
             .then(filePath => console.log(`File saved at ${filePath}`))
             .catch(err => console.error(`Error saving file: ${err}`));
     }

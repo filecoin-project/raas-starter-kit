@@ -36,6 +36,7 @@ class EdgeAggregator {
         this.apiKey = process.env.EDGE_API_KEY;
         this.jobs.forEach(job => {
             if (!job.contentID) {
+                this.downloadFile(job.cid);
                 this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
             } else {
                 this.processDealInfos(18, 1000, job.contentID);
@@ -162,7 +163,7 @@ class EdgeAggregator {
             responseType: 'stream',
         });
 
-        saveResponseToFile(response, filePath)
+        this.saveResponseToFile(response, filePath)
             .then(filePath => console.log(`File saved at ${filePath}`))
             .catch(err => console.error(`Error saving file: ${err}`));
     }
