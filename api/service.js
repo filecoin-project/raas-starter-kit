@@ -166,7 +166,7 @@ async function executeRepairJob(job) {
     })
     .then(async response => {
         //If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
-        const currentBlockHeight = await getMessagesInTipset()
+        const currentBlockHeight = await getBlockNumber();
         if (currentBlockHeight - response.data.expiration < job.epochs)
         {
           try {
@@ -297,6 +297,27 @@ async function initializeDataRetrievalListener() {
   lighthouseAggregatorInstance.eventEmitter.on('Error', error => {
     console.error('An error occurred:', error);
   });
+}
+
+async function getBlockNumber() {
+  const url = 'https://api.node.glif.io';
+  const data = {
+    "jsonrpc": "2.0",
+    "method": "eth_blockNumber",
+    "params": [],
+    "id": 1
+  };
+
+  try {
+    const response = await axios.post(url, data);
+
+    // convert the result to a number
+    const blockNumber = parseInt(response.data.result, 16);
+    return blockNumber;
+
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 async function getMessagesInTipset() {
