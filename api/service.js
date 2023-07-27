@@ -166,7 +166,7 @@ async function executeRepairJob(job) {
     .then(async response => {
         //If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
         const currentBlockHeight = await getBlockNumber();
-        if (currentBlockHeight - response.data.expiration < job.epochs)
+        if (currentBlockHeight - response.data.expiration > job.epochs)
         {
           try {
             await dealStatus.submit(job.cid);
