@@ -11,7 +11,6 @@ const contractName = "DealStatus";
 const contractInstance = "0x53260D40c73E49815B53eBDA25f114b17E7E322B";
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
-const dataDownloadDir = path.join(__dirname, 'download');
 
 let stateFilePath = "./cache/service_state.json";
 let storedNodeJobs;

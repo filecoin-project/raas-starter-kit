@@ -83,31 +83,27 @@ class LighthouseAggregator {
         let delay = initialDelay;
     
         for (let i = 0; i < maxRetries; i++) {
-            await new Promise(async (resolve, reject) => {
-                const response = await lighthouse.dealStatus(lighthouse_cid)
-                if (response.data.length == 0) {
-                    reject(new Error());
-                } else {
-                    let dealInfos = {
-                        txID: this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid).txID,
-                        deal_id: response.data.data.deal_info.deal_id,
-                        inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
-                        verifier_data: response.data.data.sub_piece_info.verifier_data,
-                    }
-                    if (dealInfos.deal_id != 0) {
-                        this.eventEmitter.emit('DealReceived', dealInfos);
-                        // Remove the job from the list
-                        this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
-                        this.saveState();
-                        resolve();
-                    }
-                    else {
-                        reject(new Error());
-                    }
+            const response = await lighthouse.dealStatus(lighthouse_cid)
+            if (response.data.length == 0) {
+                console.log("No deal found polling lighthouse for lighthouse_cid: ", lighthouse_cid);
+            } else {
+                let dealInfos = {
+                    txID: this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid).txID,
+                    deal_id: response.data.data.deal_info.deal_id,
+                    inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
+                    verifier_data: response.data.data.sub_piece_info.verifier_data,
                 }
-            }).catch(() => {
-                console.log(`Processing deal with lighthouse_cid ${lighthouse_cid}. Retrying... Attempt number ${i + 1}`);
-            });
+                if (dealInfos.deal_id != 0) {
+                    this.eventEmitter.emit('DealReceived', dealInfos);
+                    // Remove the job from the list
+                    this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
+                    this.saveState();
+                    return;
+                }
+                else {
+                    console.log("Waiting for nonzero dealID: ", lighthouse_cid);
+                }
+            }
     
             await sleep(delay);
             delay *= 2;
