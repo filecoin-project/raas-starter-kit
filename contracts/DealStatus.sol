@@ -36,7 +36,7 @@ contract DealStatus is IAggregatorOracle, Proof {
     function complete(
         uint256 _id,
         uint64 _dealId,
-        uint64 _miner,
+        uint64 _minerId,
         InclusionProof memory _proof,
         InclusionVerifierData memory _verifierData
     ) external returns (InclusionAuxData memory) {
@@ -52,7 +52,7 @@ contract DealStatus is IAggregatorOracle, Proof {
             }
         }
 
-        Deal memory deal = Deal(_dealId, _miner);
+        Deal memory deal = Deal(_dealId, _minerId);
         cidToDeals[cid].push(deal);
 
         // Perform validation logic
@@ -68,39 +68,39 @@ contract DealStatus is IAggregatorOracle, Proof {
     // getActiveDeals should return all the _cid's active dealIds
     function getActiveDeals(bytes memory _cid) external returns (Deal[] memory) {
         // get all the deal ids for the cid
-        Deal[] memory activeDealIDs;
-        activeDealIDs = this.getAllDeals(_cid);
+        Deal[] memory activeDealIds;
+        activeDealIds = this.getAllDeals(_cid);
 
-        for (uint256 i = 0; i < activeDealIDs.length; i++) {
-            uint64 dealID = activeDealIDs[i].dealId;
+        for (uint256 i = 0; i < activeDealIds.length; i++) {
+            uint64 dealID = activeDealIds[i].dealId;
             // get the deal's expiration epoch
             MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI.getDealActivation(dealID);
 
             if (dealActivationStatus.terminated > 0 || dealActivationStatus.activated == -1) {
-                delete activeDealIDs[i];
+                delete activeDealIds[i];
             }
         }
 
-        return activeDealIDs;
+        return activeDealIds;
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
     function getExpiringDeals(bytes memory _cid, uint64 epochs) external returns (Deal[] memory) {
         // the logic is similar to the above, but use this api call:
         // https://github.com/Zondax/filecoin-solidity/blob/master/contracts/v0.8/MarketAPI.sol#LL110C9-L110C9
-        Deal[] memory expiringDealIDs;
-        expiringDealIDs = this.getAllDeals(_cid);
+        Deal[] memory expiringDealIds;
+        expiringDealIds = this.getAllDeals(_cid);
 
-        for (uint256 i = 0; i < expiringDealIDs.length; i++) {
-            uint64 dealID = expiringDealIDs[i].dealId;
+        for (uint256 i = 0; i < expiringDealIds.length; i++) {
+            uint64 dealId = expiringDealIds[i].dealId;
             // get the deal's expiration epoch
-            MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealID);
+            MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealId);
 
             if (block.timestamp < uint64(dealTerm.end) - epochs) {
-                delete expiringDealIDs[i];
+                delete expiringDealIds[i];
             }
         }
 
-        return expiringDealIDs;
+        return expiringDealIds;
     }
 }

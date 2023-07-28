@@ -94,8 +94,9 @@ class EdgeAggregator {
                     'Authorization': `Bearer ${this.apiKey}`
                 },
             });
+            let jobTxID = this.aggregatorJobs.find(job => job.contentID == contentID).txID;
             let dealInfos = {
-                txID: this.aggregatorJobs.find(job => job.contentID == contentID).txID,
+                txID: parseInt(jobTxID.hex, 16),
                 deal_id: response.data.data.deal_info.deal_id,
                 inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
                 verifier_data: response.data.data.sub_piece_info.verifier_data,

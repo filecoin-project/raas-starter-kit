@@ -48,6 +48,21 @@ app.post('/api/register_job', async (req, res) => {
     epochs: req.query.epochs
   };
 
+  if (newJob.cid != null && newJob.cid != "") {
+    try {
+      ethers.utils.toUtf8Bytes(newJob.cid); // this will throw an error if cid is not valid bytes or hex string
+    } catch {
+      console.log("Error: CID must be a hexadecimal string or bytes");
+      return res.status(400).json({
+          error: 'CID must be of a valid deal'
+      });
+    }
+  } else {
+    return res.status(400).json({
+      error: 'CID cannot be empty'
+    });
+  }
+
   console.log("Submitting job to aggregator contract with CID: ", newJob.cid);
   await registerJob(newJob);
 
@@ -77,16 +92,6 @@ async function registerJob(newJob) {
   // 3. Check if newJob.endDate is a valid date
   // 4. Check if newJob.jobType is either 'renew' or 'replication'
   // 5. Check if newJob.replicationTarget is a number
-
-  try {
-    ethers.utils.toUtf8Bytes(newJob.cid); // this will throw an error if cid is not valid bytes or hex string
-  } catch {
-    console.log("Error: CID must be a hexadecimal string or bytes");
-    return res.status(400).json({
-        error: 'CID must be a hexadecimal string or bytes'
-    });
-  }
-
   console.log("Executing deal creation job from API request with CID: ", newJob.cid);
 
   let dealStatusContract = await ethers.getContractAt(contractName, contractInstance);
