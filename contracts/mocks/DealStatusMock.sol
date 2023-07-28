@@ -10,11 +10,6 @@ import "./ProofMock.sol";
 import {MarketAPI} from "./MarketAPIMock.sol";
 import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
-struct Deal {
-    uint64 dealId;
-    address miner;
-}
-
 // Delta that implements the AggregatorOracle interface
 contract DealStatusMock is IAggregatorOracle, ProofMock {
     uint256 private transactionId;

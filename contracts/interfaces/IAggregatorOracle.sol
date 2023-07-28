@@ -7,7 +7,7 @@ import "../data-segment/Proof.sol";
 interface IAggregatorOracle {
     struct Deal {
         uint64 dealId;
-        address miner;
+        uint64 miner;
     }
 
     // Event emitted when a new request is submitted
@@ -22,7 +22,7 @@ interface IAggregatorOracle {
     function complete(
         uint256 _id,
         uint64 _dealId,
-        address _miner,
+        uint64 _miner,
         InclusionProof memory _proof,
         InclusionVerifierData memory _verifierData
     ) external returns (InclusionAuxData memory);

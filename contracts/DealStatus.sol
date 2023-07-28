@@ -36,7 +36,7 @@ contract DealStatus is IAggregatorOracle, Proof {
     function complete(
         uint256 _id,
         uint64 _dealId,
-        address _miner,
+        uint64 _miner,
         InclusionProof memory _proof,
         InclusionVerifierData memory _verifierData
     ) external returns (InclusionAuxData memory) {
