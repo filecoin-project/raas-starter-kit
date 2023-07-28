@@ -99,6 +99,7 @@ class EdgeAggregator {
                 deal_id: response.data.data.deal_info.deal_id,
                 inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
                 verifier_data: response.data.data.sub_piece_info.verifier_data,
+                miner: parseInt(response.data.data.content_info.miner.substring(2), 16),
             }
             if (dealInfos.deal_id != 0) {
                 this.eventEmitter.emit('DealReceived', dealInfos);

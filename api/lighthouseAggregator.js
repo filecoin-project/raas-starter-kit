@@ -16,7 +16,6 @@ if (!lighthouseDealDownloadEndpoint) {
 
 let stateFilePath = "./cache/lighthouse_agg_state.json";
 
-// TODO: Fix
 /// A new aggregator implementation should be created for each aggregator contract
 class LighthouseAggregator {
     constructor() {
@@ -87,11 +86,15 @@ class LighthouseAggregator {
             if (response.data.length == 0) {
                 console.log("No deal found polling lighthouse for lighthouse_cid: ", lighthouse_cid);
             } else {
+                // First need to strip t0 from the front of the miner address
+                // The stripped miner string should then be converted to an integer
+                const miner = parseInt(response.miner.substring(2), 16);
                 let dealInfos = {
                     txID: this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid).txID,
-                    deal_id: response.data.data.deal_info.deal_id,
-                    inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
-                    verifier_data: response.data.data.sub_piece_info.verifier_data,
+                    deal_id: response.deal_id,
+                    inclusion_proof: response.inclusion_proof,
+                    verifier_data: response.verifier_data,
+                    miner: miner,
                 }
                 if (dealInfos.deal_id != 0) {
                     this.eventEmitter.emit('DealReceived', dealInfos);

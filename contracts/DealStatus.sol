@@ -32,6 +32,7 @@ contract DealStatus is IAggregatorOracle, Proof {
         return transactionId;
     }
 
+    // TODO: use _miner integer
     function complete(
         uint256 _id,
         uint64 _dealId,

@@ -147,7 +147,9 @@ async function executeRepairJob(job) {
   // Get all (deal_id, miner) containing the data’s cid
   const allDeals = await dealStatus.getAllDeals(job.cid);
   allDeals.forEach(async deal => {
+    // Takes integer format (need to prefix f0 for API call).
     const miner = deal.miner;
+    miner = "f0" + miner;
     const deal_id = deal.deal_id;
     const params = [miner, [{"/": deal_id}]]
 
@@ -244,6 +246,7 @@ async function initializeDataRetrievalListener() {
     // Process the dealInfos
     let txID = dealInfos.txID;
     let dealID = dealInfos.deal_id;
+    let miner = dealInfos.miner;
     let inclusionProof = {
       proofIndex: {
         index: dealInfos.inclusion_proof.proofIndex.index,
@@ -256,7 +259,7 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     try {
-      dealStatus.complete(txID, dealID, process.env.MINER, inclusionProof, verifierData);
+      dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
     }
     catch (err) {
       console.log("Error: ", err);
@@ -273,6 +276,7 @@ async function initializeDataRetrievalListener() {
     // Process the dealInfos
     let txID = dealInfos.txID;
     let dealID = dealInfos.deal_id;
+    let miner = dealInfos.miner;
     let inclusionProof = {
       proofIndex: {
         index: dealInfos.inclusion_proof.proofIndex.index,
@@ -285,7 +289,7 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     try {
-      dealStatus.complete(txID, dealID, process.env.MINER, inclusionProof, verifierData);
+      dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
     }
     catch (err) {
       console.log("Error: ", err);

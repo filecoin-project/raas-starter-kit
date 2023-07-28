@@ -50,8 +50,6 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         // Emit the event
         emit CompleteAggregatorRequest(_id, _dealId);
 
-        // TODO: SHOULD INCLUDE MINER ADDRESS WHEN PUSHING TO CIDS
-
         // save the _dealId if it is not already saved
         bytes memory cid = txIdToCid[_id];
         for (uint256 i = 0; i < cidToDealIds[cid].length; i++) {
