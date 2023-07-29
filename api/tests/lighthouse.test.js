@@ -97,5 +97,25 @@ describe('LighthouseAggregator', function() {
                 });
             });
         });
+
+        describe('#downloadFile()', function() {
+            it('is able to download a test file from the endpoint, and make a deal with it', async function() {
+                const lighthouseCID = "QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ";
+                const downloadedPath = await aggregator.downloadFile(lighthouseCID, path.join(__dirname, `../download/${lighthouseCID}`));
+                expect(fs.existsSync(downloadedPath)).to.be.true
+            });
+        });
+
+        describe('#uploadFileAndMakeDeal()', function() {
+            it('is able to download a test file from the endpoint, and make a deal with it', async function() {
+                const lighthouseCID = "QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ";
+                const downloadedPath = path.join(__dirname, `../download/${lighthouseCID}`);
+                expect(fs.existsSync(downloadedPath)).to.be.true
+
+                const deal = await aggregator.uploadFileAndMakeDeal(downloadedPath);
+                // Assert that the deal response isn't undefined
+                expect(deal).to.not.be.undefined;
+            });
+        });
     });
 });

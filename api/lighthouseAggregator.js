@@ -137,15 +137,19 @@ class LighthouseAggregator {
                 console.error(err);
             }
         });
+
         response = await axios({
             method: 'GET',
             url: `${lighthouseDealDownloadEndpoint}${lighthouse_cid}`,
             responseType: 'stream',
         });
 
-        this.saveResponseToFile(response, filePath)
-            .then(filePath => console.log(`File saved at ${filePath}`))
-            .catch(err => console.error(`Error saving file: ${err}`));
+        try {
+            const filePath = await this.saveResponseToFile(response, filePath);
+            console.log(`File saved at ${filePath}`);
+        } catch (err) {
+            console.error(`Error saving file: ${err}`);
+        }
 
         return filePath
     }
