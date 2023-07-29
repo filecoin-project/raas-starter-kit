@@ -192,7 +192,7 @@ class EdgeAggregator {
         });
     }
 
-    dequeueJob(txID, cid) {
+    dequeueJob(cid, txID) {
         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.txID != txID && job.cid != cid);
     }
 

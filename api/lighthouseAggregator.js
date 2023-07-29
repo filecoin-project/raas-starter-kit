@@ -150,7 +150,10 @@ class LighthouseAggregator {
         return filePath
     }
 
-    loadState() {
+    loadState(path) {
+        if (path != undefined) {
+            stateFilePath = path;
+        }
         // check if the state file exists
         if (fs.existsSync(stateFilePath)) {
             // if it exists, read it and parse the JSON
@@ -160,10 +163,13 @@ class LighthouseAggregator {
             // if it doesn't exist, return an empty array
             return [];
         }
-      }
+    }
       
-    saveState() {
+    saveState(path) {
         // write the current state to the file
+        if (path != undefined) {
+            stateFilePath = path;
+        }
         const data = JSON.stringify(this.aggregatorJobs);
         fs.writeFileSync(stateFilePath, data);
     }
@@ -175,7 +181,7 @@ class LighthouseAggregator {
         });
     }
 
-    dequeueJob(txID, cid) {
+    dequeueJob(cid, txID) {
         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.txID != txID && job.cid != cid);
     }
 
