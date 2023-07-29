@@ -4,15 +4,15 @@ const path = require('path');
 const sinon = require('sinon');
 const expect = chai.expect;
 const EventEmitter = require('events');
-const LighthouseAggregator = require('../lighthouseAggregator');
+const EdgeAggregator = require('../edgeAggregator');
 
 describe('LighthouseAggregator', function() {
     let aggregator;
     let stateFilePath;
 
     beforeEach(function() {
-        aggregator = new LighthouseAggregator();
-        stateFilePath = path.join(__dirname, '../../cache/lighthouse_agg_state.json');
+        aggregator = new EdgeAggregator();
+        stateFilePath = path.join(__dirname, '../../cache/edge_agg_state.json');
     
         // Create a WriteStream stub
         writeStream = new EventEmitter();
@@ -30,7 +30,7 @@ describe('LighthouseAggregator', function() {
     
       after(function() {
         // Cleanup the dummy state file
-        const filePath = path.join(__dirname, '../../cache/lighthouse_agg_state.json');
+        const filePath = path.join(__dirname, '../../cache/edge_agg_state.json');
 
         fs.unlinkSync(filePath);
       });
