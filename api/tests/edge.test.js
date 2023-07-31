@@ -130,8 +130,8 @@ describe('LighthouseAggregator', function() {
                 aggregator.eventEmitter.on('DealReceived', (dealInfos) => {
                     eventWasEmitted = true;
 
-                    expect(dealInfos).to.have.property('deal_id');
-                    expect(dealInfos.deal_id != 0);
+                    expect(dealInfos).to.have.property('dealID');
+                    expect(dealInfos.dealID != 0);
                     expect(dealInfos).to.have.property('txID');
                     expect(dealInfos).to.have.property('inclusion_proof');
                     expect(dealInfos).to.have.property('verifier_data')

@@ -83,9 +83,9 @@ class EdgeAggregator {
     async processDealInfos(maxRetries, initialDelay, contentID) {
         // Get deal's information from the response and send it to the aggregator contract
         // This endpoint: curl https://hackfs-coeus.estuary.tech/edge/open/status/content/<ID> 
-        // should return the cid, deal_id, verifier_data, inclusion_proof of the uploaded data
-        // Emit an event once the deal_id becomes nonzero - we must retry the poll since it may take
-        // up to 24 hours to get a nonzero deal_id
+        // should return the cid, dealID, verifier_data, inclusion_proof of the uploaded data
+        // Emit an event once the dealID becomes nonzero - we must retry the poll since it may take
+        // up to 24 hours to get a nonzero dealID
         let delay = initialDelay;
 
         for (let i = 0; i < maxRetries; i++) {
@@ -102,12 +102,12 @@ class EdgeAggregator {
             }
             let dealInfos = {
                 txID: parseInt(job.txID.hex, 16),
-                deal_id: response.data.data.deal_info.deal_id,
+                dealID: response.data.data.deal_info.dealID,
                 inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
                 verifier_data: response.data.data.sub_piece_info.verifier_data,
                 miner: response.data.data.content_info.miner.replace("t0", ""),
             }
-            if (dealInfos.deal_id != 0) {
+            if (dealInfos.dealID != 0) {
                 this.eventEmitter.emit('DealReceived', dealInfos);
                 // Remove the job from the list
                 this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);

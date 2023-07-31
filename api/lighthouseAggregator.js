@@ -10,6 +10,7 @@ const lighthouse = require('@lighthouse-web3/sdk');
 // Location of fetched data for each CID from edge
 const dataDownloadDir = path.join(__dirname, 'download');
 const lighthouseDealDownloadEndpoint = process.env.LIGHTHOUSE_DEAL_DOWNLOAD_ENDPOINT;
+const lighthouseDealInfosEndpoint = process.env.LIGHTHOUSE_DEAL_INFOS_ENDPOINT;
 if (!lighthouseDealDownloadEndpoint) {
     throw new Error("Missing environment variables: data endpoints");
 }
@@ -82,21 +83,31 @@ class LighthouseAggregator {
         let delay = initialDelay;
     
         for (let i = 0; i < maxRetries; i++) {
-            const response = await lighthouse.dealStatus(lighthouse_cid)
-            if (response.data.length == 0) {
+            let response = await axios.get('https://api.lighthouse.storage/api/lighthouse/get_proof', {
+                params: {
+                  cid: lighthouse_cid
+                }
+            })
+            if (!response.data) {
                 console.log("No deal found polling lighthouse for lighthouse_cid: ", lighthouse_cid);
             } else {
+                console.log("Lighthouse deal infos received: ", response.data);
                 // First need to strip t0 from the front of the miner address
                 // The stripped miner string should then be converted to an integer
-                const miner = parseInt(response.miner.substring(2), 16);
-                let dealInfos = {
-                    txID: this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid).txID,
-                    deal_id: response.deal_id,
-                    inclusion_proof: response.inclusion_proof,
-                    verifier_data: response.verifier_data,
-                    miner: miner,
+                let job = this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid);
+                if (!job.txID) {
+                    console.log("Warning: Contract may not have received deal. Please resubmit. No txID found for contentID: ", contentID);
+                    this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
+                    return;
                 }
-                if (dealInfos.deal_id != 0) {
+                let dealInfos = {
+                    txID: job.txID,
+                    dealID: response.data.dealInfo.dealID,
+                    inclusion_proof: response.data.proof.fileProof.inclusionProof,
+                    verifier_data: response.data.proof.fileProof.verifierData,
+                    miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
+                }
+                if (dealInfos.dealID != 0) {
                     this.eventEmitter.emit('DealReceived', dealInfos);
                     // Remove the job from the list
                     this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
