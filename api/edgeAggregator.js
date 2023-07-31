@@ -94,13 +94,18 @@ class EdgeAggregator {
                     'Authorization': `Bearer ${this.apiKey}`
                 },
             });
-            let jobTxID = this.aggregatorJobs.find(job => job.contentID == contentID).txID;
+            let job = this.aggregatorJobs.find(job => job.contentID == contentID);
+            if (!job.txID) {
+                console.log("Warning: Contract may not have received deal. Please resubmit. No txID found for contentID: ", contentID);
+                this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
+                return;
+            }
             let dealInfos = {
-                txID: parseInt(jobTxID.hex, 16),
+                txID: parseInt(job.txID.hex, 16),
                 deal_id: response.data.data.deal_info.deal_id,
                 inclusion_proof: response.data.data.sub_piece_info.inclusion_proof,
                 verifier_data: response.data.data.sub_piece_info.verifier_data,
-                miner: parseInt(response.data.data.content_info.miner.substring(2), 16),
+                miner: response.data.data.content_info.miner.replace("t0", ""),
             }
             if (dealInfos.deal_id != 0) {
                 this.eventEmitter.emit('DealReceived', dealInfos);

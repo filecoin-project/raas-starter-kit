@@ -117,5 +117,46 @@ describe('LighthouseAggregator', function() {
                 expect(deal).to.not.be.undefined;
             });
         });
+
+        describe('#processDealInfos()', function() {
+            it('is able to emit a DealReceived event with dealInfos', async function() {
+                const lighthouseCID = "QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ";
+                const downloadedPath = path.join(__dirname, `../download/${lighthouseCID}`);
+                expect(fs.existsSync(downloadedPath)).to.be.true
+
+                const deal = await aggregator.uploadFileAndMakeDeal(downloadedPath);
+                // Assert that the deal response isn't undefined
+                expect(deal).to.not.be.undefined;
+            });
+        });
+
+        describe('#processDealInfos()', function() {
+            it('is able to emit a DealReceived event with dealInfos', async function() {
+                // Set up the aggregatorJobs array with a dummy job
+                aggregator.aggregatorJobs.push({
+                    cid: 'QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ',
+                    txID: { type: 'BigNumber', hex: '0x42' },
+                    contentID: 25500,
+                });
+                let eventWasEmitted = false;
+                aggregator.eventEmitter.on('DealReceived', (dealInfos) => {
+                    eventWasEmitted = true;
+
+                    expect(dealInfos).to.have.property('deal_id');
+                    expect(dealInfos.deal_id != 0);
+                    expect(dealInfos).to.have.property('txID');
+                    expect(dealInfos).to.have.property('inclusion_proof');
+                    expect(dealInfos).to.have.property('verifier_data')
+                    expect(dealInfos).to.have.property('miner');
+                    expect(dealInfos.miner != 0 && dealInfos.miner.includes('t0'));
+                });
+
+                // Call the method
+                await aggregator.processDealInfos(18, 1000, 25500);
+
+                // Check that the event was emitted
+                expect(eventWasEmitted).to.be.true;
+            });
+        });
     });
 });
