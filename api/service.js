@@ -294,11 +294,18 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     verifierData.commPc = '0x' + verifierData.commPc;
-    console.log(txID);
-    const auxData = await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
-    console.log("Deal completed with inclusion aux data: ", auxData);
+    try {
+      const auxData = await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+      console.log("Deal completed with inclusion aux data: ", auxData);
 
-    console.log("Deal completed with TX ID: ", txID.toString());
+      console.log("Deal completed with TX ID: ", txID.toString());
+    }
+    catch (err) {
+      console.log("Error submitting file for completion: ", err);
+      // Remove the job at this stage if the deal cannot be completed
+      storedNodeJobs = storedNodeJobs.filter(job => job.txID != txID);
+      saveJobsToState();
+    }
   });
 
   lighthouseAggregatorInstance.eventEmitter.on('Error', error => {
