@@ -148,7 +148,7 @@ describe('LighthouseAggregator', function() {
                     expect(dealInfos).to.have.property('inclusion_proof');
                     expect(dealInfos).to.have.property('verifier_data')
                     expect(dealInfos).to.have.property('miner');
-                    expect(dealInfos.miner != 0 && dealInfos.miner.includes('t0'));
+                    expect(dealInfos.miner != 0 && dealInfos.miner.includes('f0'));
                 });
 
                 // Call the method

@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const port = 1337;
 const contractName = "DealStatus";
-const contractInstance = "0x53260D40c73E49815B53eBDA25f114b17E7E322B";
+const contractInstance = "0x65A1dC7FE50fe836145bd403746b73E89980E7ca";
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
 
@@ -94,8 +94,8 @@ async function registerJob(newJob) {
   // 5. Check if newJob.replicationTarget is a number
   console.log("Executing deal creation job from API request with CID: ", newJob.cid);
 
-  let dealStatusContract = await ethers.getContractAt(contractName, contractInstance);
-  await dealStatusContract.submit(ethers.utils.toUtf8Bytes(newJob.cid));
+  const dealStatus = await ethers.getContractAt(contractName, contractInstance);
+  await dealStatus.submit(ethers.utils.toUtf8Bytes(newJob.cid));
 
   if (!storedNodeJobs.some(job => job.cid == newJob.cid)) {
     storedNodeJobs.push(newJob);
@@ -148,14 +148,14 @@ async function executeRenewalJob(job) {
 // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
 async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
-  const method = StateMinerActiveSectors;
+  const method = "StateMinerActiveSectors";
   // Get all (deal_id, miner) containing the data’s cid
   const allDeals = await dealStatus.getAllDeals(job.cid);
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
-    const miner = deal.miner;
+    const miner = deal.minerId;
     miner = "f0" + miner;
-    const deal_id = deal.deal_id;
+    const deal_id = deal.dealId;
     const params = [miner, [{"/": deal_id}]]
 
     const body = {
@@ -247,29 +247,29 @@ async function initializeDataRetrievalListener() {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
 
   // Listener for edge aggregator
-  edgeAggregatorInstance.eventEmitter.on('DealReceived', dealInfos => {
+  edgeAggregatorInstance.eventEmitter.on('DealReceived', async dealInfos => {
     // Process the dealInfos
     let txID = dealInfos.txID;
-    let dealID = dealInfos.deal_id;
+    let dealID = dealInfos.dealID;
     let miner = dealInfos.miner;
     let inclusionProof = {
       proofIndex: {
         index: dealInfos.inclusion_proof.proofIndex.index,
-        path: dealInfos.inclusion_proof.proofIndex.path.map(value => ethers.utils.hexlify(value)),
+        path: dealInfos.inclusion_proof.proofIndex.path.map(value => ethers.utils.toUtf8Bytes(value)),
       },
       proofSubtree: {
         index: dealInfos.inclusion_proof.proofSubtree.index,
-        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => ethers.utils.hexlify(value)),
+        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => ethers.utils.toUtf8Bytes(value)),
       },
     }
     let verifierData = dealInfos.verifier_data;
     try {
-      dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+      const auxData = await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+      console.log("Deal completed with inclusion aux data: ", auxData);
     }
     catch (err) {
       console.log("Error: ", err);
     }
-    console.log("Deal completed with TX ID: ", txID);
   });
 
   edgeAggregatorInstance.eventEmitter.on('Error', error => {
@@ -277,29 +277,28 @@ async function initializeDataRetrievalListener() {
   });
 
   // Listener for edge aggregator
-  lighthouseAggregatorInstance.eventEmitter.on('DealReceived', dealInfos => {
+  lighthouseAggregatorInstance.eventEmitter.on('DealReceived', async dealInfos => {
     // Process the dealInfos
-    let txID = dealInfos.txID;
-    let dealID = dealInfos.deal_id;
+    let txID = dealInfos.txID.toString();
+    let dealID = dealInfos.dealID;
     let miner = dealInfos.miner;
     let inclusionProof = {
       proofIndex: {
-        index: dealInfos.inclusion_proof.proofIndex.index,
-        path: dealInfos.inclusion_proof.proofIndex.path.map(value => ethers.utils.hexlify(value)),
+        index: '0x' + dealInfos.inclusion_proof.proofIndex.index,
+        path: dealInfos.inclusion_proof.proofIndex.path.map(value => '0x' + value),
       },
       proofSubtree: {
-        index: dealInfos.inclusion_proof.proofSubtree.index,
-        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => ethers.utils.hexlify(value)),
+        index: '0x' + dealInfos.inclusion_proof.proofSubtree.index,
+        path: dealInfos.inclusion_proof.proofSubtree.path.map(value => '0x' + value),
       },
     }
     let verifierData = dealInfos.verifier_data;
-    try {
-      dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
-    }
-    catch (err) {
-      console.log("Error: ", err);
-    }
-    console.log("Deal completed with TX ID: ", txID);
+    verifierData.commPc = '0x' + verifierData.commPc;
+    console.log(txID);
+    const auxData = await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+    console.log("Deal completed with inclusion aux data: ", auxData);
+
+    console.log("Deal completed with TX ID: ", txID.toString());
   });
 
   lighthouseAggregatorInstance.eventEmitter.on('Error', error => {

@@ -102,7 +102,7 @@ class LighthouseAggregator {
                 }
                 let dealInfos = {
                     txID: job.txID,
-                    dealID: response.data.dealInfo.dealID,
+                    dealID: response.data.dealInfo[0].dealId,
                     inclusion_proof: response.data.proof.fileProof.inclusionProof,
                     verifier_data: response.data.proof.fileProof.verifierData,
                     miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
@@ -136,7 +136,7 @@ class LighthouseAggregator {
         }
     }
 
-    async downloadFile(lighthouse_cid, filePath = path.join(dataDownloadDir, lighthouse_cid)) {
+    async downloadFile(lighthouse_cid, downloadPath = path.join(dataDownloadDir, lighthouse_cid)) {
         console.log("Downloading file with CID: ", lighthouse_cid);
         let response;
     
@@ -156,23 +156,19 @@ class LighthouseAggregator {
         });
 
         try {
-            const filePath = await this.saveResponseToFile(response, filePath);
+            const filePath = await this.saveResponseToFile(response, downloadPath);
             console.log(`File saved at ${filePath}`);
+            return filePath
         } catch (err) {
             console.error(`Error saving file: ${err}`);
         }
-
-        return filePath
     }
 
-    loadState(path) {
-        if (path != undefined) {
-            stateFilePath = path;
-        }
+    loadState(path=stateFilePath) {
         // check if the state file exists
-        if (fs.existsSync(stateFilePath)) {
+        if (fs.existsSync(path)) {
             // if it exists, read it and parse the JSON
-            const rawData = fs.readFileSync(stateFilePath);
+            const rawData = fs.readFileSync(path);
             return JSON.parse(rawData);
         } else {
             // if it doesn't exist, return an empty array
@@ -180,13 +176,13 @@ class LighthouseAggregator {
         }
     }
       
-    saveState(path) {
+    saveState(path=stateFilePath) {
         // write the current state to the file
         if (path != undefined) {
             stateFilePath = path;
         }
         const data = JSON.stringify(this.aggregatorJobs);
-        fs.writeFileSync(stateFilePath, data);
+        fs.writeFileSync(path, data);
     }
 
     enqueueJob(cid, txID) {

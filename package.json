@@ -8,7 +8,6 @@
     "test-service": "mocha --exit ./api/tests/service.test.js",
     "test-lighthouse": "mocha --exit ./api/tests/lighthouse.test.js",
     "test-edge": "mocha --exit ./api/tests/edge.test.js",
-    "test-staging": "hardhat test test/staging/*_test.js --network goerli",
     "lint": "solhint 'contracts/*.sol'",
     "lint:fix": "solhint 'contracts/**/*.sol' --fix",
     "format": "prettier --write .",
