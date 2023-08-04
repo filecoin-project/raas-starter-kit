@@ -294,11 +294,12 @@ async function initializeDataRetrievalListener() {
     }
     let verifierData = dealInfos.verifier_data;
     verifierData.commPc = '0x' + verifierData.commPc;
+    // The size piece is originally in hex. Convert it to a number.
+    verifierData.sizePc = parseInt(verifierData.sizePc, 16);
+    console.log(verifierData);
     try {
-      const auxData = await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
-      console.log("Deal completed with inclusion aux data: ", auxData);
-
-      console.log("Deal completed with TX ID: ", txID.toString());
+      await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+      console.log("Deal completed for deal ID: ", txID.toString());
     }
     catch (err) {
       console.log("Error submitting file for completion: ", err);
