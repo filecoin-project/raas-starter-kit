@@ -4,6 +4,7 @@ const sinon = require('sinon');
 const {
     ethers
 } = require("hardhat");
+const axios = require('axios');
 
 chai.use(chaiHttp);
 
@@ -53,5 +54,45 @@ describe('API tests', () => {
             expect(res.status).to.equal(400);
             expect(res.body.error).to.equal('CID cannot be empty');
         });
+        it('should be able to get the current blocknumber', async() => {
+            const url = 'https://api.node.glif.io';
+            const data = {
+                "jsonrpc": "2.0",
+                "method": "eth_blockNumber",
+                "params": [],
+                "id": 1
+            };
+
+            try {
+                const response = await axios.post(url, data);
+
+                // convert the result to a number
+                const blockNumber = parseInt(response.data.result, 16);
+                expect(blockNumber).to.not.be.null;
+            } catch (error) {
+                console.error(error);
+            }
+        });
+        it('should be able to call the repair endpoint', async() => {
+            const params = [81630, null];
+            const method = "Filecoin.StateMarketStorageDeal";
+
+            const body = {
+                jsonrpc: '2.0',
+                id: 1,
+                method: method,
+                params: params
+            };
+            
+            const response = await axios.post(process.env.LOTUS_RPC, body, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            expect(response.status).to.equal(200);
+            expect(response.data.result).to.not.be.null;
+            console.log(response.data.result);
+        })
     });
 });

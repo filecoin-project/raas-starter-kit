@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 
 const { networkConfig } = require("../helper-hardhat-config")
 
+const axios = require('axios');
 const app = express();
 const fs = require('fs');
 const path = require('path');
@@ -148,15 +149,14 @@ async function executeRenewalJob(job) {
 // and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
 async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
-  const method = "StateMinerActiveSectors";
+  const method = "Filecoin.StateMarketStorageDeal";
   // Get all (deal_id, miner) containing the data’s cid
   const allDeals = await dealStatus.getAllDeals(job.cid);
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
-    const miner = deal.minerId;
-    miner = "f0" + miner;
-    const deal_id = deal.dealId;
-    const params = [miner, [{"/": deal_id}]]
+    const miner = "f0" + deal.minerId;
+    const dealId = deal.dealId;
+    const params = [dealId, null];
 
     const body = {
       jsonrpc: '2.0',
@@ -165,26 +165,22 @@ async function executeRepairJob(job) {
       params: params
     };
     
-    axios.post(process.env.LOTUS_RPC, body, {
+    const response = await axios.post(process.env.LOTUS_RPC, body, {
         headers: {
             'Content-Type': 'application/json'
         }
     })
-    .then(async response => {
-        //If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
-        const currentBlockHeight = await getBlockNumber();
-        if (currentBlockHeight - response.data.expiration > job.epochs)
-        {
-          try {
-            await dealStatus.submit(job.cid);
-          } catch (error) {
-            console.log("Error: ", error);
-          }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+
+    const currentBlockHeight = await getBlockNumber();
+
+    if (response.result.State.SectorStartEpoch > -1 && currentBlockHeight - deal.result.State.SlashEpoch > job.epochs)
+    {
+      try {
+        await dealStatus.submit(job.cid);
+      } catch (error) {
+        console.log("Error: ", error);
+      }
+    }
   });
 }
 
