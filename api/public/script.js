@@ -17,6 +17,6 @@ function toggleEpochInput() {
   
 // Call the function initially to set the correct visibility on page load
 document.addEventListener("DOMContentLoaded", function() {
-toggleEpochInput();
+    toggleEpochInput();
 });
   
