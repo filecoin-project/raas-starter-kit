@@ -77,6 +77,8 @@ To start the server, run the following command:
 yarn service
 ```
 
+You can access a frontend of the app at [localhost:1337](http://localhost:1337/). 
+
 Several test cases regarding the service's functionality are located in `api/tests`. To run them, run the following command:
 
 ```bash
@@ -100,10 +102,24 @@ You can then send jobs to the server with the following information:
     "endDate": "value_of_end_date",
     "jobType": "value_of_job_type",
     "replicationTarget": "value_of_replication_target", // (required for replication jobs)
-    "aggregator": "type_of_aggregator",
+    "aggregator": "type_of_aggregator", // Recommended to be "lighthouse"
     "epochs": "value_of_epochs" // (required for renewal jobs)
     }
 }
+```
+
+The below is an example of a POST request to the server:
+
+```bash
+curl --location 'http://localhost:1337/api/register_job?cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ&endDate=2023-07-15&jobType=replication&replication_target=1&aggregator=lighthouse&epochs=1000' \
+--header 'Accept: application/json' \
+--header 'User-Agent: SMB Redirect/1.0.0' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Basic ZDU5MWYyYzQtMzk0MS00ZWM4LTkyNTQtYjgzZDg1NmI2YmU5Om1xZkU5eklsVFFOdGVIUnY2WDEwQXVmYkNlN0pIUXVC' \
+--data '    {
+        "customerInternalReference": "JUMIOGENERATED",
+        "userReference": "test"
+    }'
 ```
 
 Note: 
