@@ -89,6 +89,20 @@ yarn test-edge
 yarn test-lighthouse
 ```
 
+The service performs the following:
+- **Allows users to register various jobs to be performed by the service (performed by default every 12 hours)**.
+  - **Replication**: When building a storage solution with FVM on Filecoin, storage deals need to be replicated across geo location, policy sizes and reputation. Teams building data solutions will pay FIL in order to make sure their data can be replicated N times across a number of selected storage providers, either one-off or continuously responding to SP faults. The job should get all the active deals of the cid, if the number of active deals is smaller than replication_target, the worker retrieves the data (see the retrieval section below), create a new deal using aggregators (see the create a new deal section below), and send the cid to the aggregator smart contract. 
+  - **Renewal**: When building storage solutions with FVM on Filecoin, storage deals need to be live for a long time. This service should be able to take an existing deal and renew it with the same or a different SP. Teams building data solutions will pay FIL in order to make sure their data can be renewed when it comes close to the end of its lifetime, or renew on another SP whenever they need to do so. For ‘renew’ job, the job gets all the active deals of the cid, if any deal is expiring, perform a retrieval and submit the retrieved data to aggregators to create a new deal and  send the cid to the aggregator smart contract.  
+  - **Repair**: When building storage solutions with FVM on Filecoin, storage deals need to be stable. This service should be able to take an existing deal and repair it with the same or a different SP. Teams building data solutions will pay FIL in order to make sure their data can be repaired when it comes close to the end of its lifetime, or repair on another SP whenever they need to do so. The node checks that the deal has been verified previously, and if the deal has been inactive for more than `repair_threshold` epochs. If so, the worker resubmits the deal to the smart contract and creates a new deal.
+- **Monitors smart contract for new deal submissions and creates a new deal with the aggregator node**.
+  - The node listens to the `SubmitAggregatorRequest` event in aggregators’ smart contract, and trigger the following workflow whenever it sees a new SubmitAggregatorRequest event. The flow similarly assumes that the data of the cid is discoverable for aggregators. If not, upload it first. The steps below are not implemented and are left empty for developers to implement. 
+    - 1. A new`SubmitAggregatorRequest` event comes in, the node saves save the `txId` and `cid`, and go to the next step
+    - 2. Create a new deal with aggregators ([see this section](https://www.notion.so/Renew-Replication-Starter-Kit-f57af3ebd221462b8b8ef2714178865a?pvs=21)) by retrieving and uploading the data
+      - The response contains an ID, which is the `content_id`
+    - 3. [Use the content_id to check the upload’s status](https://github.com/application-research/edge-ur/blob/car-gen/docs/aggregation.md#checking-the-status-by-content-id)
+    - 4. Periodically poll the API above, and once `deal_id` becomes non-zero, proceed to the next step
+    - 5. Post the `deal_id`, `inclusion_proof`, and `verifier_data` back to [the aggregators’ smart contract](https://github.com/application-research/fevm-data-segment/blob/main/contracts/aggregator-oracle/edge.sol#L52) by calling the `complete` method, along with the `txId` and `cid`
+
 ### Usage
 
 Once you start up the server, the POST endpoint will be available at the designated port.
