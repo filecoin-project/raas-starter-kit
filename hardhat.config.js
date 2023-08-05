@@ -17,7 +17,7 @@ module.exports = {
           },
         },
       },
-    defaultNetwork: "localnet",
+    defaultNetwork: "calibrationnet",
     networks: {
         localnet: {
             chainId: 31415926,

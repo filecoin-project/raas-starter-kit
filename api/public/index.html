@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="script.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            margin: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+
+        label, input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            background: #007BFF;
+            border: none;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <title>Job Registration</title>
+</head>
+<body>
+    <h1>Register a new Job</h1>
+    <form action="/api/register_job" method="post">
+        <label for="cid">CID:</label>
+        <input type="text" id="cid" name="cid" required><br><br>
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="end_date" required><br><br>
+        <label for="jobType">Job Type:</label>
+        <select name="jobType" id="jobType" onchange="toggleEpochInput()">
+            <option value="replication">Replication</option>
+            <option value="renew">Renew</option>
+            <option value="repair">Repair</option>
+        </select><br><br>
+        <div id="epochInput" style="display: none;">
+            <label for="epochs">Epoch:</label>
+            <input type="number" id="epochs" name="epochs" min="0" placeholder="Enter epoch">
+        </div>
+        <div id="replicationTarget" style="display: none;">
+            <label for="replication">Replication Target:</label>
+            <input type="number" id="replication" name="replication" min="0" placeholder="Enter replication target">
+        </div>
+        <label for="aggregator">Aggregator</label>
+        <select name="aggregator" id="aggregator">
+            <option value="lighthouse">Lighthouse (recommended)</option>
+            <option value="edge">Edge</option>
+        </select><br><br>
+        <!-- Add other fields as needed -->
+        <input type="submit" value="Register">
+    </form>
+</body>
+</html>

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../data-segment/Proof.sol";
+import "./ProofMock.sol";
 
 // Behavioral Interface for an aggregator oracle
 interface IAggregatorOracle {
