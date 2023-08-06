@@ -4,27 +4,20 @@ pragma solidity ^0.8.17;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-import "./interfaces/IAggregatorOracle.sol";
-import "./data-segment/Proof.sol";
+import "./IAggregatorOracleMock.sol";
+import "./ProofMock.sol";
 
-import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
+import {MarketAPI} from "./MarketAPIMock.sol";
 import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
 
 // Delta that implements the AggregatorOracle interface
-contract DealStatus is IAggregatorOracle, Proof {
+contract DealStatusMock is IAggregatorOracle, ProofMock {
     uint256 private transactionId;
     mapping(uint256 => bytes) private txIdToCid;
     mapping(bytes => Deal[]) private cidToDeals;
 
     constructor() {
         transactionId = 0;
-    }
-
-    function computeExpectedAuxDataPublic(
-        InclusionProof memory _proof,
-        InclusionVerifierData memory _verifierData
-    ) public pure returns (InclusionAuxData memory) {
-        return computeExpectedAuxData(_proof, _verifierData);
     }
 
     function submit(bytes memory _cid) external returns (uint256) {
@@ -39,6 +32,7 @@ contract DealStatus is IAggregatorOracle, Proof {
         return transactionId;
     }
 
+    // TODO: use _miner integer
     function complete(
         uint256 _id,
         uint64 _dealId,
@@ -63,7 +57,7 @@ contract DealStatus is IAggregatorOracle, Proof {
 
         // Perform validation logic
         // return this.computeExpectedAuxDataWithDeal(_dealId, _proof, _verifierData);
-        return this.computeExpectedAuxDataPublic(_proof, _verifierData);
+        return this.computeExpectedAuxData(_proof, _verifierData);
     }
 
     // allDealIds should return all the deal ids created by the aggregator
@@ -80,8 +74,7 @@ contract DealStatus is IAggregatorOracle, Proof {
         for (uint256 i = 0; i < activeDealIds.length; i++) {
             uint64 dealID = activeDealIds[i].dealId;
             // get the deal's expiration epoch
-            MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI
-                .getDealActivation(dealID);
+            MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI.getDealActivation(dealID);
 
             if (dealActivationStatus.terminated > 0 || dealActivationStatus.activated == -1) {
                 delete activeDealIds[i];
@@ -111,3 +104,4 @@ contract DealStatus is IAggregatorOracle, Proof {
         return expiringDealIds;
     }
 }
+

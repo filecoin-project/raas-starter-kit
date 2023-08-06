@@ -5,7 +5,7 @@
 This repository consists of two components to build a tool to renew or replicate storage deals.
 
 * DealStatus Contract: a smart contract to query the status of storage deals.
-* Service.js: a RaaS aplication that renew or replicate storage deals when necessary. It is not implemented and a few comments were provided.
+* Service.js: a RaaS aplication that renew, replicate, or repair storage deals when necessary.
 
 Please refer to this [doc](https://www.notion.so/pl-strflt/Data-FVM-234b7f4c17624cd8b972f92806732ca9) to understand more.
 
@@ -67,6 +67,48 @@ This will compile the DealStatus contract and deploy it to the Calibrationnet te
 
 Keep note of the deployed contract address.
 
-## Use Ngrok
+## Interacting with the RaaS application
 
-You may use [ngrok](https://ngrok.com/docs/getting-started/) to expose your localhost for public access
+The RaaS application is a server that handles REST API requests for renewing, replicating, or repairing storage deals. It is located in the `api` directory.
+
+To start the server, run the following command:
+
+```bash
+yarn service
+```
+
+Several test cases regarding the service's functionality are located in `api/tests`. To run them, run the following command:
+
+```bash
+# Tests the interaction for API calls into service
+yarn test-service
+# Tests interactions between service and aggregator nodes
+yarn test-edge
+yarn test-lighthouse
+```
+
+### Usage
+
+Once you start up the server, the POST endpoint will be available at the designated port.
+
+You can then send jobs to the server with the following information:
+
+```json
+{
+  "job": {
+    "cid": "value_of_cid",
+    "endDate": "value_of_end_date",
+    "jobType": "value_of_job_type",
+    "replicationTarget": "value_of_replication_target", // (required for replication jobs)
+    "aggregator": "type_of_aggregator",
+    "epochs": "value_of_epochs" // (required for renewal jobs)
+    }
+}
+```
+
+Note: 
+The `aggregator` field can be one of the following: `edge`, or `lighthouse`. This changes the type of aggregator node that the service will use to interact with the Filecoin network.
+
+The `jobType` field can be one of the following: `renew`, `replicate`, or `repair`. This changes the type of job that the service will perform.
+
+Find more information [here](https://www.notion.so/Renew-Replication-Starter-Kit-f57af3ebd221462b8b8ef2714178865a#fc387e4c63114459b2583572c823a4c5)
