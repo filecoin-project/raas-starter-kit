@@ -7,7 +7,7 @@ import "./Const.sol";
 
 library Cid {
     // cidToPieceCommitment converts a CID to a piece commitment.
-    function cidToPieceCommitment(bytes memory _cb) public pure returns (bytes32) {
+    function cidToPieceCommitment(bytes memory _cb) internal pure returns (bytes32) {
         require(
             _cb.length == CID_COMMP_HEADER_LENGTH + MERKLE_TREE_NODE_SIZE,
             "wrong length of CID"

@@ -54,7 +54,7 @@ contract DealStatus is IAggregatorOracle, Proof {
         bytes memory cid = txIdToCid[_id];
         for (uint256 i = 0; i < cidToDeals[cid].length; i++) {
             if (cidToDeals[cid][i].dealId == _dealId) {
-                return this.computeExpectedAuxData(_proof, _verifierData);
+                return this.computeExpectedAuxDataPublic(_proof, _verifierData);
             }
         }
 
