@@ -59,15 +59,15 @@
         <label for="fileUpload">Upload a File:</label>
         <input type="file" id="fileUpload">
         <button type="button" id="uploadButton">Upload</button><br><br>
+        <div id="uploadStatus"></div>
     </form>
-
-    <div id="statusMessage"></div>
 
     <h1>Register a new Job</h1>
     <form action="/api/register_job" method="post">
         <label for="cid">CID:</label>
         <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a CID of your own</p>
         <input type="text" id="cid" name="cid" required><br><br>
+        <!-- Add other fields as needed -->
         <!--
         <label for="endDate">End Date:</label>
         <input type="date" id="endDate" name="end_date" required><br><br>
@@ -91,7 +91,6 @@
             <option value="edge">Edge</option>
         </select><br><br>
         -->
-        <!-- Add other fields as needed -->
         <input type="submit" value="Register">
     </form>
 </body>

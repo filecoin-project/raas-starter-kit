@@ -56,6 +56,9 @@ async function uploadFile() {
     return;
   }
 
+  // Show the uploading text
+  uploadStatus.textContent = 'Uploading...';
+
   // Create FormData to send the file
   const formData = new FormData();
   formData.append('file', file);
@@ -65,6 +68,13 @@ async function uploadFile() {
     method: 'POST',
     body: formData
   });
+  // Update the upload status
+  if (uploadResponse.ok) {
+    uploadStatus.textContent = 'Upload complete!';
+  } else {
+    uploadStatus.textContent = 'Upload failed. Please try again.';
+  }
+
   const responseJson = await uploadResponse.json();
 
   console.log("Uploaded file. Response: ", responseJson);
