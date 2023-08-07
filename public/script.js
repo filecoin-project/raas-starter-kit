@@ -24,25 +24,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 */
 
-document.getElementById('jobRegistrationForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  document.getElementById('statusMessage').textContent = 'Loading...';
-
-  const formData = new FormData(e.target);
-
-  const response = await fetch('/api/register_job', {
-    method: 'POST',
-    body: formData
-  });
-
-  if (response.ok) {
-    document.getElementById('statusMessage').textContent = 'Deal successfully submitted!';
-  } else {
-    document.getElementById('statusMessage').textContent = 'An error occurred. Please try again.';
-  }
-});
-
 // Enable file upload on click.
 document.getElementById('uploadButton').addEventListener('click', uploadFile);
   
@@ -85,3 +66,36 @@ async function uploadFile() {
   // Populate the 'cid' box with the response
   document.getElementById('cid').value = cid;
 }
+
+// Allow the user to register a job
+document.getElementById('registerJobForm').addEventListener('submit', function (e) {
+  e.preventDefault(); // Prevent the default form submission
+
+  // Show the "uploading" message
+  document.getElementById('jobStatus').textContent = 'Uploading...';
+
+  // Collect form data
+  const formData = new FormData(e.target);
+  for (let [key, value] of formData.entries()) {
+    console.log(key, value);
+  }
+
+  // Send a POST request
+  fetch('/api/register_job', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json()) // Assuming the server responds with JSON
+  .then(data => {
+    // Update the UI with the response
+    if (!data.error) {
+      document.getElementById('jobStatus').textContent = 'Upload complete!';
+    } else {
+      document.getElementById('jobStatus').textContent = 'Upload failed! ' + data.error;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    document.getElementById('jobStatus').textContent = 'An error occurred during the upload.';
+  });
+});

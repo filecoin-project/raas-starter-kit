@@ -63,7 +63,7 @@
     </form>
 
     <h1>Register a new Job</h1>
-    <form action="/api/register_job" method="post">
+    <form id="registerJobForm" action="/api/register_job" method="post">
         <label for="cid">CID:</label>
         <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a CID of your own</p>
         <input type="text" id="cid" name="cid" required><br><br>
@@ -92,6 +92,7 @@
         </select><br><br>
         -->
         <input type="submit" value="Register">
+        <div id="jobStatus"></div>
     </form>
 </body>
 </html>

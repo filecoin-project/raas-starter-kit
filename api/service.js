@@ -46,7 +46,7 @@ app.use(
 );
 
 // Registers jobs for node to periodically execute jobs (every 12 hours)
-app.post('/api/register_job', async (req, res) => {
+app.post('/api/register_job', upload.none(), async (req, res) => {
   // Capture when the request was received for default enddate
   const requestReceivedTime = new Date();
   // Default end date is 1 month from the request received time
