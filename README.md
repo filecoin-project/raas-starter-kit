@@ -125,7 +125,7 @@ You can then send jobs to the server with the following information:
 The below is an example of a POST request to the server:
 
 ```bash
-curl --location 'http://localhost:1337/api/register_job?cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ&endDate=2023-07-15&jobType=replication&replication_target=1&aggregator=lighthouse&epochs=1000' \
+curl --location 'http://localhost:1337/api/register_job?cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ&endDate=2023-07-15&jobType=replication&replicationTarget=1&aggregator=lighthouse&epochs=1000' \
 --header 'Accept: application/json' \
 --header 'User-Agent: SMB Redirect/1.0.0' \
 --header 'Content-Type: application/json' \

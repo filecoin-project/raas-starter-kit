@@ -38,15 +38,26 @@ app.listen(port, () => {
   }, 43200000);
 });
 
+app.use(
+  express.urlencoded({ extended: true }),
+);
+
 // Registers jobs for node to periodically execute jobs (every 12 hours)
 app.post('/api/register_job', async (req, res) => {
+  // Capture when the request was received for default enddate
+  const requestReceivedTime = new Date();
+  // Default end date is 1 month from the request received time
+  const defaultEndDate = requestReceivedTime.setMonth(requestReceivedTime.getMonth() + 1);
+
+  // Create a new job object from the request body
+  // If certain fields are not present, use hardcoded defaults.
   let newJob = {
-    cid: req.query.cid,
-    endDate: req.query.end_date,
-    jobType: req.query.job_type,
-    replicationTarget: req.query.replication_target,
-    aggregator: req.query.aggregator,
-    epochs: req.query.epochs
+    cid: req.body.cid,
+    endDate: req.body.endDate || defaultEndDate,
+    jobType: req.body.jobType || "all",
+    replicationTarget: req.body.replicationTarget || 1,
+    aggregator: req.body.aggregator || "lighthouse",
+    epochs: req.body.epochs || 1000
   };
 
   if (newJob.cid != null && newJob.cid != "") {
@@ -363,6 +374,12 @@ async function executeJobs() {
   storedNodeJobs.forEach(async job => {
     if (job.endDate < Date.now()) {
       storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+    }
+    if (job.jobType == 'all') {
+      console.log("Processing all");
+      await executeReplicationJob(job);
+      await executeRenewalJob(job);
+      await executeRepairJob(job);
     }
     if (job.jobType == 'replication') {
       console.log("Processing replication");

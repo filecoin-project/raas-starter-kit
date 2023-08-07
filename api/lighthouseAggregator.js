@@ -83,7 +83,7 @@ class LighthouseAggregator {
         let delay = initialDelay;
     
         for (let i = 0; i < maxRetries; i++) {
-            let response = await axios.get('https://api.lighthouse.storage/api/lighthouse/get_proof', {
+            let response = await axios.get(lighthouseDealInfosEndpoint, {
                 params: {
                   cid: lighthouse_cid
                 }

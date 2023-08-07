@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="script.js"></script>
+    <script src="../src/script.js" type = "module"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -52,10 +52,23 @@
     <title>Job Registration</title>
 </head>
 <body>
+    <h1>Upload a file!</h1>
+
+    <!-- Separate form for file upload -->
+    <form id="jobRegistrationForm">
+        <label for="fileUpload">Upload a File:</label>
+        <input type="file" id="fileUpload">
+        <button type="button" onclick="uploadFile()">Upload</button><br><br>
+    </form>
+
+    <div id="statusMessage"></div>
+
     <h1>Register a new Job</h1>
     <form action="/api/register_job" method="post">
         <label for="cid">CID:</label>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a CID of your own</p>
         <input type="text" id="cid" name="cid" required><br><br>
+        <!--
         <label for="endDate">End Date:</label>
         <input type="date" id="endDate" name="end_date" required><br><br>
         <label for="jobType">Job Type:</label>
@@ -77,6 +90,7 @@
             <option value="lighthouse">Lighthouse (recommended)</option>
             <option value="edge">Edge</option>
         </select><br><br>
+        -->
         <!-- Add other fields as needed -->
         <input type="submit" value="Register">
     </form>
