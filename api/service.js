@@ -7,11 +7,14 @@ const axios = require('axios');
 const app = express();
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+
 const port = 1337;
 const contractName = "DealStatus";
 const contractInstance = "0x65A1dC7FE50fe836145bd403746b73E89980E7ca";
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
+const upload = multer({ dest: 'temp/' }); // Temporary directory for uploads
 
 let stateFilePath = "./cache/service_state.json";
 let storedNodeJobs;
@@ -81,6 +84,31 @@ app.post('/api/register_job', async (req, res) => {
   return res.status(201).json({
     message: "Job registered successfully."
   });
+});
+
+// Uploads a file to the aggregator if it hasn't already been uploaded
+app.post('/api/uploadFile', upload.single('file'), async (req, res) => {
+  // At the moment, this only handles lighthouse.
+  // Depending on the functionality of edge in the future, may or may not match compatibility.
+  console.log("Received file upload request");
+
+  // req.file.path will contain the local file path of the uploaded file on the server
+  const filePath = req.file.path;
+
+  try {
+    // Upload the file to the aggregator
+    const lighthouse_cid = await lighthouseAggregatorInstance.uploadFileAndMakeDeal(filePath);
+    // Optionally, you can remove the file from the temp directory if needed
+    fs.unlinkSync(filePath);
+
+    return res.status(201).json({
+      message: "Job registered successfully.",
+      cid: lighthouse_cid
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('An error occurred');
+  }
 });
 
 // Serve static files from the "public" directory
