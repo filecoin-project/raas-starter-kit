@@ -74,7 +74,8 @@ The RaaS application is a server that handles REST API requests for renewing, re
 To start the server, run the following command:
 
 ```bash
-yarn service
+yarn service # This starts up the node service backend
+yarn start # This starts up the frontend
 ```
 
 You can access a frontend of the app at [localhost:1337](http://localhost:1337/). 
@@ -125,15 +126,17 @@ You can then send jobs to the server with the following information:
 The below is an example of a POST request to the server:
 
 ```bash
-curl --location 'http://localhost:1337/api/register_job?cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ&endDate=2023-07-15&jobType=replication&replicationTarget=1&aggregator=lighthouse&epochs=1000' \
+curl --location 'http://localhost:1337/api/register_job' \
 --header 'Accept: application/json' \
 --header 'User-Agent: SMB Redirect/1.0.0' \
---header 'Content-Type: application/json' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
 --header 'Authorization: Basic ZDU5MWYyYzQtMzk0MS00ZWM4LTkyNTQtYjgzZDg1NmI2YmU5Om1xZkU5eklsVFFOdGVIUnY2WDEwQXVmYkNlN0pIUXVC' \
---data '    {
-        "customerInternalReference": "JUMIOGENERATED",
-        "userReference": "test"
-    }'
+--data-urlencode 'cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ' \
+--data-urlencode 'endDate=2023-07-15' \
+--data-urlencode 'jobType=replication' \
+--data-urlencode 'replicationTarget=1' \
+--data-urlencode 'aggregator=lighthouse' \
+--data-urlencode 'epochs=1000'
 ```
 
 Note: 

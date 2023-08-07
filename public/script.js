@@ -42,6 +42,9 @@ document.getElementById('jobRegistrationForm').addEventListener('submit', async 
 document.addEventListener("DOMContentLoaded", function() {
     toggleEpochInput();
 });
+
+// Enable file upload on click.
+document.getElementById('uploadButton').addEventListener('click', uploadFile);
   
 async function uploadFile() {
   const fileInput = document.getElementById('fileUpload');
@@ -53,7 +56,9 @@ async function uploadFile() {
     return;
   }
 
-  // Assuming that lighthouse.upload takes a file object and API key as arguments
+  // If a file was downloaded, first download the file temporarily
+
+  // Then upload the file from the temp directory
   const uploadResponse = await lighthouse.upload(file, process.env.LIGHTHOUSE_API_KEY);
 
   console.log("Uploaded file. Response: ", uploadResponse);
@@ -63,4 +68,6 @@ async function uploadFile() {
 
   // Populate the 'cid' box with the response
   document.getElementById('cid').value = cid;
+
+  // Finally, remove the file from the temp directory
 }

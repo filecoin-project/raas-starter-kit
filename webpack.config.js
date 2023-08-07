@@ -1,27 +1,25 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const DotenvWebpackPlugin = require('dotenv-webpack');
 
 module.exports = {
-    mode: 'development',
-    entry: {
-        index: './api/src/script.js',
+    mode: 'development', // or 'production'
+    entry: './public/script.js', // Entry point for the JavaScript file
+    output: {
+        filename: 'bundle.js',
+            path: path.resolve(__dirname, 'dist'),
     },
-    devtool: 'inline-source-map',
     devServer: {
-    static: './api/dist',
-    port: 8080,
+        static: './dist', // Directory where bundled files will be served from
+        proxy: {
+            '/api': 'http://localhost:1337', // Proxy API requests to your backend server
+            logLevel: 'debug',
+        },
     },
     plugins: [
         new HtmlWebpackPlugin({
-        title: 'Development',
+            template: './public/index.html', // Path to your HTML file
         }),
+        new DotenvWebpackPlugin()
     ],
-    output: {
-        filename: '[name].bundle.js',
-        path: path.resolve(__dirname, 'api/dist'),
-        clean: true,
-    },
-    optimization: {
-    runtimeChunk: 'single',
-    },
 };
