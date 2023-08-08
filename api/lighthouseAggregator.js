@@ -83,42 +83,45 @@ class LighthouseAggregator {
         let delay = initialDelay;
     
         for (let i = 0; i < maxRetries; i++) {
-            let response = await axios.get(lighthouseDealInfosEndpoint, {
-                params: {
-                  cid: lighthouse_cid
+            try {
+                let response = await axios.get(lighthouseDealInfosEndpoint, {
+                    params: {
+                    cid: lighthouse_cid
+                    }
+                })
+                if (!response.data) {
+                    console.log("No deal found polling lighthouse for lighthouse_cid: ", lighthouse_cid);
+                } else {
+                    console.log("Lighthouse deal infos received: ", response.data);
+                    // First need to strip t0 from the front of the miner address
+                    // The stripped miner string should then be converted to an integer
+                    let job = this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid);
+                    if (!job.txID) {
+                        console.log("Warning: Contract may not have received deal. Please resubmit. No txID found for contentID: ", contentID);
+                        this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
+                        return;
+                    }
+                    let dealInfos = {
+                        txID: job.txID,
+                        dealID: response.data.dealInfo[0].dealId,
+                        inclusion_proof: response.data.proof.fileProof.inclusionProof,
+                        verifier_data: response.data.proof.fileProof.verifierData,
+                        miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
+                    }
+                    if (dealInfos.dealID != 0) {
+                        this.eventEmitter.emit('DealReceived', dealInfos);
+                        // Remove the job from the list
+                        this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
+                        this.saveState();
+                        return;
+                    }
+                    else {
+                        console.log("Waiting for nonzero dealID: ", lighthouse_cid);
+                    }
                 }
-            })
-            if (!response.data) {
-                console.log("No deal found polling lighthouse for lighthouse_cid: ", lighthouse_cid);
-            } else {
-                console.log("Lighthouse deal infos received: ", response.data);
-                // First need to strip t0 from the front of the miner address
-                // The stripped miner string should then be converted to an integer
-                let job = this.aggregatorJobs.find(job => job.lighthouse_cid == lighthouse_cid);
-                if (!job.txID) {
-                    console.log("Warning: Contract may not have received deal. Please resubmit. No txID found for contentID: ", contentID);
-                    this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
-                    return;
-                }
-                let dealInfos = {
-                    txID: job.txID,
-                    dealID: response.data.dealInfo[0].dealId,
-                    inclusion_proof: response.data.proof.fileProof.inclusionProof,
-                    verifier_data: response.data.proof.fileProof.verifierData,
-                    miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
-                }
-                if (dealInfos.dealID != 0) {
-                    this.eventEmitter.emit('DealReceived', dealInfos);
-                    // Remove the job from the list
-                    this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
-                    this.saveState();
-                    return;
-                }
-                else {
-                    console.log("Waiting for nonzero dealID: ", lighthouse_cid);
-                }
+            } catch (e) {
+                console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid);
             }
-    
             await sleep(delay);
             delay *= 2;
         }

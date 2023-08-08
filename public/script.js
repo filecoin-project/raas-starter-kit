@@ -67,17 +67,42 @@ async function uploadFile() {
   document.getElementById('cid').value = cid;
 }
 
+// Function to poll the deal status
+async function pollDealStatus(cid) {
+  await fetch(`/api/deal_status?cid=${cid}`, {
+    method: 'GET'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.dealInfos) {
+      console.log(data.dealInfos)
+      document.getElementById('jobStatus').textContent = `Deal status: Completed! Miner: f0${data.dealInfos.miner}. DealID: ${data.dealInfos.dealID}`;
+    } else {
+      // If deal information is not yet available, poll again after a delay
+      setTimeout(() => pollDealStatus(cid), 5000); // 5 seconds delay
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    document.getElementById('jobStatus').textContent = 'An error occurred while checking deal status.';
+  });
+}
+
 // Allow the user to register a job
 document.getElementById('registerJobForm').addEventListener('submit', function (e) {
   e.preventDefault(); // Prevent the default form submission
 
   // Show the "uploading" message
-  document.getElementById('jobStatus').textContent = 'Uploading...';
+  document.getElementById('jobregStatus').textContent = 'Registering job...';
 
   // Collect form data
   const formData = new FormData(e.target);
+  let cid;
   for (let [key, value] of formData.entries()) {
     console.log(key, value);
+    if (key === 'cid') {
+      cid = value; // Assign the CID value if found in form data
+    }
   }
 
   // Send a POST request
@@ -89,13 +114,15 @@ document.getElementById('registerJobForm').addEventListener('submit', function (
   .then(data => {
     // Update the UI with the response
     if (!data.error) {
-      document.getElementById('jobStatus').textContent = 'Upload complete!';
+      document.getElementById('jobregStatus').textContent = 'Job registration complete! Waiting for deal to be completed on-chain...';
+      // Start polling the deal status
+      pollDealStatus(cid);
     } else {
-      document.getElementById('jobStatus').textContent = 'Upload failed! ' + data.error;
+      document.getElementById('jobregStatus').textContent = 'Job registration failed! ' + data.error;
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    document.getElementById('jobStatus').textContent = 'An error occurred during the upload.';
+    document.getElementById('jobregStatus').textContent = 'An error occurred during the upload.';
   });
 });

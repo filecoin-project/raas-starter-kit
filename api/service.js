@@ -89,7 +89,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
 // Uploads a file to the aggregator if it hasn't already been uploaded
 app.post('/api/uploadFile', upload.single('file'), async (req, res) => {
   // At the moment, this only handles lighthouse.
-  // Depending on the functionality of edge in the future, may or may not match compatibility.
+  // Depending on the functionality of the Edge aggregator in the future, may or may not match compatibility.
   console.log("Received file upload request");
 
   // req.file.path will contain the local file path of the uploaded file on the server
@@ -109,6 +109,24 @@ app.post('/api/uploadFile', upload.single('file'), async (req, res) => {
     console.error(err);
     res.status(500).send('An error occurred');
   }
+});
+
+// Queries the status of a deal with the provided CID
+app.get('/api/deal_status', async (req, res) => {
+  const cid = req.query.cid;
+  try {
+    ethers.utils.toUtf8Bytes(cid); // this will throw an error if cid is not valid bytes or hex string
+  } catch {
+    console.log("Error: CID must be a hexadecimal string or bytes");
+    return res.status(400).json({
+        error: 'CID must be of a valid deal'
+    });
+  }
+  // Find the job with the matching CID in the queue
+  const job = storedNodeJobs.find(job => job.cid === cid);
+  return res.status(200).json({
+    dealInfos: job.dealInfos
+  });
 });
 
 // Serve static files from the "public" directory
@@ -237,6 +255,12 @@ async function initializeDealCreationListener() {
   /// Logic for handling SubmitAggregatorRequest events
   function handleEvent(transactionId, cid) {
     console.log(`Received SubmitAggregatorRequest event: (Transaction ID: ${transactionId}, CID: ${cid})`);
+    // Store the txID of the job in the job queue
+    storedNodeJobs.forEach(job => {
+      if (job.cid === ethers.utils.toUtf8String(cid)) {
+        job.txID = transactionId;
+      }
+    });
 
     if (processedTransactionIds.has(transactionId)) {
         console.log(`Ignoring already processed transaction ID: ${transactionId}`);
@@ -340,6 +364,13 @@ async function initializeDataRetrievalListener() {
     console.log(verifierData);
     try {
       await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
+      // Add on the dealInfos to the existing job stored inside the storedNodeJobs.
+      storedNodeJobs.forEach(job => {
+        if (job.txID === dealInfos.txID) {
+          job.dealInfos = dealInfos;
+        }
+      });
+      console.log(storedNodeJobs);
       console.log("Deal completed for deal ID: ", txID.toString());
     }
     catch (err) {
