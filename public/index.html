@@ -11,7 +11,12 @@
             margin: 40px;
         }
 
-        h1 {
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        h3 {
             color: #333;
             text-align: center;
         }
@@ -27,9 +32,14 @@
 
         label, input, select {
             width: 100%;
-            padding: 10px;
-            margin: 5px 0;
+            padding: 5px;
             box-sizing: border-box;
+        }
+
+        label {
+            font-size: 18px; /* You can adjust the size as needed */
+            font-weight: bold;
+            margin: 4px -5px;
         }
 
         input[type="submit"] {
@@ -52,20 +62,22 @@
     <title>Job Registration</title>
 </head>
 <body>
-    <h1>Upload a file!</h1>
+    <h2>Upload a file to Lighthouse!</h2>
 
     <!-- Separate form for file upload -->
     <form id="jobRegistrationForm">
-        <label for="fileUpload">Upload a File:</label>
+        <label for="fileUpload">Input file here:</label>
         <input type="file" id="fileUpload">
         <button type="button" id="uploadButton">Upload</button><br><br>
         <div id="uploadStatus"></div>
     </form>
 
-    <h1>Register a new Job</h1>
+    <h3>Deploy a Repair, Renewal and Replication Worker</h3>
     <form id="registerJobForm" action="/api/register_job" method="post">
         <label for="cid">CID:</label>
-        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a CID of your own</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a Lighthouse CID of your own</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">By default, the workers run for a month with a replication target of 1 and renewal per 1000 epochs</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">The CID is passed to the post endpoint of the service node, and submits a data deal on-chain. A deal is also created with the aggregator.</p>
         <input type="text" id="cid" name="cid" required><br><br>
         <!-- Add other fields as needed -->
         <!--

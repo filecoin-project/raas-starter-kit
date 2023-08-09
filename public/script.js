@@ -114,7 +114,7 @@ document.getElementById('registerJobForm').addEventListener('submit', function (
   .then(data => {
     // Update the UI with the response
     if (!data.error) {
-      document.getElementById('jobregStatus').textContent = 'Job registration complete! Waiting for deal to be completed on-chain...';
+      document.getElementById('jobregStatus').textContent = 'CID has been registered with the smart contract! Awaiting response from lighthouse (this takes up to 24 hours)...';
       // Start polling the deal status
       pollDealStatus(cid);
     } else {

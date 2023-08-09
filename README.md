@@ -14,7 +14,7 @@ Please refer to this [doc](https://www.notion.so/pl-strflt/Data-FVM-234b7f4c1762
 Open up your terminal (or command prompt) and navigate to a directory you would like to store this code on. Once there type in the following command:
 
 
-```
+```bash
 git clone --recurse-submodules git@github.com:filecoin-project/raas-starter-kit.git
 cd raas-starter-kit
 yarn install
@@ -33,7 +33,7 @@ You can get a private key from a wallet provider [such as Metamask](https://meta
 
 Add your private key as an environment variable by running this command:
 
- ```
+```bash
 export PRIVATE_KEY='abcdef'
 ```
 
@@ -43,7 +43,7 @@ If you use a .env file, don't commit and push any changes to .env files that may
 ## Get the Deployer Address
 
 Run this command:
-```
+```bash
 yarn hardhat get-address
 ```
 
@@ -59,13 +59,16 @@ Go to the [Calibrationnet testnet faucet](https://calibration.yoga/#faucet), and
 
 Type in the following command in the terminal to deploy all contracts:
 
- ```
+```bash
 yarn hardhat deploy
 ```
 
 This will compile the DealStatus contract and deploy it to the Calibrationnet test network automatically!
 
-Keep note of the deployed contract address.
+Keep note of the deployed contract address - the service node will need it to interact with the contract.
+Update the `contractInstance` variable in `api/service.js` with the deployed contract address.
+
+There's a contract interface in the `contracts/interfaces` directory that `DealStatus` inherits from. If you would like to create your own contract different from `DealStatus`, be sure to inherit from and override the methods in the interface.
 
 ## Interacting with the RaaS application
 
@@ -89,6 +92,8 @@ yarn test-service
 yarn test-edge
 yarn test-lighthouse
 ```
+
+**Note: some processes that the service performs (such as uploading deals to lighthouse) may take up to 24 hours. The node service has local state persistence in the `cache` directory in case of shutdown.**
 
 The service performs the following:
 - **Allows users to register various jobs to be performed by the service (performed by default every 12 hours)**.
