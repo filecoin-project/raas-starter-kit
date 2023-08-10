@@ -38,7 +38,7 @@ app.listen(port, () => {
   setInterval(async () => {
     console.log("Executing jobs");
     await executeJobs();
-  }, 43200000);
+  }, 20000); // 43200000 = 12 hours
 });
 
 app.use(
@@ -122,10 +122,28 @@ app.get('/api/deal_status', async (req, res) => {
         error: 'CID must be of a valid deal'
     });
   }
-  // Find the job with the matching CID in the queue
+  const dealStatus = await ethers.getContractAt(contractName, contractInstance)
+  // Find the job with the matching CID in the queue. If there is no job, return 400
   const job = storedNodeJobs.find(job => job.cid === cid);
+  if (!job) {
+    return res.status(400).json({
+      error: 'An error occurred while retrieving the deal status. Please re-register the jobs.'
+    });
+  }
+  let activeDeals;
+  try {
+    activeDeals = await dealStatus.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
+  }
+  catch (err) {
+    console.log("An error has occurred when retrieving deal status: ", err);
+    activeDeals = 0;
+  }
   return res.status(200).json({
-    dealInfos: job.dealInfos
+    dealInfos: job.dealInfos,
+    jobType: job.jobType,
+    replicationTarget: job.replicationTarget,
+    epochs: job.epochs,
+    currentActiveDeals: activeDeals,
   });
 });
 
@@ -179,7 +197,8 @@ async function executeReplicationJob(job) {
   } catch {
     console.log("Error: CID must be a hexadecimal string or bytes");
   }
-  const activeDeals = await dealStatus.getActiveDeals(cid);
+  const activeDeals = await dealStatus.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
+  console.log(`Deal ${job.cid} at ${activeDeals.length}`);
   if (activeDeals.length < job.replicationTarget) {
     try {
       await dealStatus.submit(cid);
@@ -196,7 +215,7 @@ async function executeReplicationJob(job) {
 async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
-  const expiringDeals = await dealStatus.getExpiringDeals(job.cid, job.epochs ? job.epochs : 1000);
+  const expiringDeals = await dealStatus.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
   expiringDeals.forEach(async () => {
     try {
       await dealStatus.submit(job.cid);
@@ -214,10 +233,9 @@ async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   const method = "Filecoin.StateMarketStorageDeal";
   // Get all (deal_id, miner) containing the data’s cid
-  const allDeals = await dealStatus.getAllDeals(job.cid);
+  const allDeals = await dealStatus.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
-    const miner = "f0" + deal.minerId;
     const dealId = deal.dealId;
     const params = [dealId, null];
 
@@ -278,18 +296,32 @@ async function initializeDealCreationListener() {
       // To process the dealInfos before completion of deal is handled at dataRetrievalListener
       // Max retries: 18 (48 hours)
       // Initial delay: 1000 ms
-      if (job.aggregator === 'edge') {
-        const contentID = await edgeAggregatorInstance.processFile(cidString, transactionId);
-        edgeAggregatorInstance.processDealInfos(18, 1000, contentID);
-      }
-      else if (job.aggregator === 'lighthouse') {
-        const lighthouseCID = await lighthouseAggregatorInstance.processFile(cidString, transactionId);
-        lighthouseAggregatorInstance.processDealInfos(18, 1000, lighthouseCID);
-      }
-      else {
-        console.log("Error: Invalid aggregator type for job with CID: ", cidString);
-        // Remove the job if the aggregator type is invalid
+      if (!job.aggregator) {
+        console.log("Error: Aggregator type not specified for job with CID: ", cidString);
+        // Remove the job if the aggregator type is not specified
         storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+        saveJobsToState();
+      } else {
+        if (job.aggregator === 'edge') {
+          const contentID = await edgeAggregatorInstance.processFile(cidString, transactionId);
+          edgeAggregatorInstance.processDealInfos(18, 1000, contentID);
+        }
+        else if (job.aggregator === 'lighthouse') {
+          try {
+            const result = await lighthouseProcessWithRetry(cidString, transactionId);
+            return result;
+          } catch (error) {
+            console.error('File processing error. Please try again:', error);
+            storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+            saveJobsToState();
+          }
+        }
+        else {
+          console.log("Error: Invalid aggregator type for job with CID: ", cidString);
+          // Remove the job if the aggregator type is invalid
+          storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+          saveJobsToState();
+        }
       }
       
       // After processing this event, reattach the event listener
@@ -302,6 +334,25 @@ async function initializeDealCreationListener() {
   // Start listening to the first event and recursively handle the next events
   if (dealStatus.listenerCount("SubmitAggregatorRequest") === 0) {
     dealStatus.once("SubmitAggregatorRequest", handleEvent);
+  }
+}
+
+async function lighthouseProcessWithRetry(cidString, transactionId) {
+  let retries = 1; // Number of retries
+
+  while (retries >= 0) {
+    try {
+      const lighthouseCID = await lighthouseAggregatorInstance.processFile(cidString, transactionId);
+      await lighthouseAggregatorInstance.processDealInfos(18, 1000, lighthouseCID);
+      return lighthouseCID; // Return the result if successful
+    } catch (error) {
+      console.error('An error occurred:', error);
+      if (retries === 0) {
+        throw error; // If no more retries left, rethrow the error
+      }
+    }
+
+    retries--; // Decrement the retry counter
   }
 }
 
@@ -433,25 +484,47 @@ async function executeJobs() {
   storedNodeJobs.forEach(async job => {
     if (job.endDate < Date.now()) {
       storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+      saveJobsToState();
     }
     if (job.jobType == 'all') {
       console.log("Processing all");
-      await executeReplicationJob(job);
-      await executeRenewalJob(job);
-      await executeRepairJob(job);
+      try {
+        await executeReplicationJob(job);
+        await executeRenewalJob(job);
+        await executeRepairJob(job);
+      }
+      catch (err) {
+        console.log("An unexpected error has occurred when executing jobs: ", err);
+      }
     }
-    if (job.jobType == 'replication') {
+    else if (job.jobType == 'replication') {
       console.log("Processing replication");
-      await executeReplicationJob(job);
+      try {
+        await executeReplicationJob(job);
+      }
+      catch (err) {
+        console.log("An unexpected error has occurred when executing jobs: ", err);
+      }
     } else if (job.jobType == 'renew') {
       console.log("Processing renewal");
-      await executeRenewalJob(job);
+      try {
+        await executeRenewalJob(job);
+      }
+      catch (err) {
+        console.log("An unexpected error has occurred when executing jobs: ", err);
+      }
     } else if (job.jobType == 'repair') {
       console.log("Processing repair");
-      await executeRepairJob(job);
+      try {
+        await executeRepairJob(job);
+      }
+      catch (err) {
+        console.log("An unexpected error has occurred when executing jobs: ", err);
+      }
     } else {
       console.log("Error: Invalid job type");
       storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
+      saveJobsToState();
     }
   });
 }
