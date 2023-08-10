@@ -88,6 +88,13 @@ async function pollDealStatus(cid) {
   });
 }
 
+document.getElementById('cid').addEventListener('keydown', function(event) {
+  if (event.key === 'Tab') {
+    event.preventDefault(); // Prevent the usual tab behavior
+    this.value = this.placeholder; // Set the input value to the placeholder
+  }
+});
+
 // Allow the user to register a job
 document.getElementById('registerJobForm').addEventListener('submit', function (e) {
   e.preventDefault(); // Prevent the default form submission

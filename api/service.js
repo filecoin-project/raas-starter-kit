@@ -58,7 +58,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     cid: req.body.cid,
     endDate: req.body.endDate || defaultEndDate,
     jobType: req.body.jobType || "all",
-    replicationTarget: req.body.replicationTarget || 1,
+    replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
     epochs: req.body.epochs || 1000
   };
