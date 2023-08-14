@@ -74,10 +74,12 @@ There's a contract interface in the `contracts/interfaces` directory that `DealS
 
 The RaaS application is a server that handles REST API requests for renewing, replicating, or repairing storage deals. It is located in the `api` directory.
 
-To start the server, run the following command:
+Before starting the frontend, ensure that you have already started your RaaS node service.
+
+To start the server, run the following commands:
 
 ```bash
-yarn service # This starts up the node service backend
+yarn service # This starts up the node service backend. Must be performed before using the frontend.
 yarn start # This starts up the frontend
 ```
 
