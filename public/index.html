@@ -58,6 +58,42 @@
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
+
+        .jobStatusBox {
+            flex-basis: 30%;
+            background: #f3f4f6;
+            padding: 15px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            flex: 1; 
+            border-left: 2px solid #0056b3;
+        }
+        
+        .jobStatusBox:first-child {
+            border-left: none;
+        }
+
+        .jobStatusContainer {
+            display: flex;
+            justify-content: space-around;
+            background: #fff;
+            padding: 20px;
+            max-width: 500px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin: 40px auto;
+        }
+
+        @media screen and (max-width: 600px) {
+            .jobStatusContainer {
+                flex-direction: column;
+            }
+            .jobStatusBox {
+                margin-bottom: 10px;
+            }
+        }
     </style>
     <title>Job Registration</title>
 </head>
@@ -106,10 +142,11 @@
         -->
         <input type="submit" value="Deploy!">
         <div id="jobregStatus"></div>
-        <div id="jobStatus"></div>
-        <div id="replicationJobStatus"></div>
-        <div id="renewJobStatus"></div>
-        <div id="repairJobStatus"></div>
     </form>
+    <div class="jobStatusContainer">
+        <div class="jobStatusBox" id="replicationJobStatus">Replication Job Status: Not Registered Yet</div>
+        <div class="jobStatusBox" id="renewJobStatus">Renew Job Status: Not Registered Yet</div>
+        <div class="jobStatusBox" id="repairJobStatus">Repair Job Status: Not Registered Yet</div>
+    </div>
 </body>
 </html>

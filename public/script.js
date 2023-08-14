@@ -77,20 +77,19 @@ async function pollDealStatus(cid) {
     // If a 400 is returned, return it
     if (data.error) {
       console.error('Error:', data.error);
-      document.getElementById('jobStatus').textContent = 'An error occurred while checking deal status.';
+      document.getElementById('jobregStatus').textContent = 'An error occurred while checking deal status.';
     } else
     if (data.dealInfos) {
       console.log(data)
-      document.getElementById('jobStatus').textContent = `Deal status: Completed! Miner: f0${data.dealInfos.miner}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID}`;
-      document.getElementById('jobregStatus').textContent = `Executing ${data.jobType} job(s) with replication target ${data.replicationTarget} and renewals per ${data.epochs} epochs. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}`;
-      if (data.jobType === "replication") {
-        document.getElementById('replicationJobStatus').textContent = `Executing ${data.jobType} job to ${data.replicationTarget}.`;
+      document.getElementById('jobregStatus').textContent = `Deal status: Completed! Miner: f0${data.dealInfos.miner}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID}`;
+      if (data.jobType === "replication" || data.jobType === "all") {
+        document.getElementById('replicationJobStatus').textContent = `Replication Job Status: Executing ${data.jobType} job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}.`;
       }
-      if (data.jobType === "renewal") {
-        document.getElementById('renewJobStatus').textContent = `Executing ${data.jobType} job with ${data.epochs}.`;
+      if (data.jobType === "renewal" || data.jobType === "all") {
+        document.getElementById('renewJobStatus').textContent = `Renew Job Status: Executing ${data.jobType} job with ${data.epochs}.`;
       }
-      if (data.jobType === "repair") {
-        document.getElementById('repairJobStatus').textContent = `Executing ${data.jobType} job with ${data.epochs}.`;
+      if (data.jobType === "repair" || data.jobType === "all") {
+        document.getElementById('repairJobStatus').textContent = `Repair Job Status: Executing ${data.jobType} job with ${data.epochs}.`;
       }
     } else {
       // If deal information is not yet available, poll again after a delay
@@ -100,7 +99,7 @@ async function pollDealStatus(cid) {
   // Catch all remaining unexpected errors.
   .catch(error => {
     console.error('Error:', error);
-    document.getElementById('jobStatus').textContent = 'An error occurred while checking deal status.';
+    document.getElementById('jobregStatus').textContent = 'An error occurred while checking deal status.';
   });
 }
 
