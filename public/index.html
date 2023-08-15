@@ -112,10 +112,10 @@
     <form id="registerJobForm" action="/api/register_job" method="post">
         <label for="cid">CID:</label>
         <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a Lighthouse CID of your own</p>
-        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">By default, registration runs each type of worker for a month with a replication target of 2 (data will be further replicated once in addition to the original upload) and renewal per 1000 epochs</p>
-        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Workers can be registered individually! Job workers don't have to be bundled, and each job can have 0, 1, or 2 workers. Simply change the default input in `service.js` for your dApp, or use the sample frontend code in `public/index.html` to allow for user input</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">By default, registration runs each type of worker for a month with a replication target of 2 (data will be further replicated once in addition to the original upload) and renewal per 1000 epochs.</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Workers can be registered individually! Job workers don't have to be bundled, and each job can have 0, 1, or 2 workers. Simply change the default input in `service.js` for your dApp, or use the sample frontend code in `public/index.html` to allow for user input.</p>
         <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">The CID is passed to the post endpoint of the service node, and submits a data deal on-chain. A deal is also created with the aggregator.</p>
-        <h4 style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">If you're unsure what to do, try with the placeholder CID! </h4>
+        <h4 style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">If you're unsure what to do, try with the placeholder CID! It uploads a 1KB json file as a deal on-chain and to lighthouse.</h4>
         <input type="text" id="cid" name="cid" placeholder="QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ" required><br><br>
         <!-- Add other fields as needed -->
         <!--
