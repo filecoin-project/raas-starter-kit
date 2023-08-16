@@ -84,17 +84,17 @@ async function pollDealStatus(cid) {
       document.getElementById('jobregStatus').textContent = `Deal status: Completed! Miner: f0${data.dealInfos.miner}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID}`;
       if (data.jobType === "replication" || data.jobType === "all") {
         document.getElementById('replicationJobStatus').innerHTML = 
-        `Replication Job Status: Executing ${data.jobType} job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}.<br><br>
+        `Replication Job Status: Executing replication job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}.<br><br>
         Calling getActiveDeals from smart contract instance to get all the active deals of the cid. If the number of active deals is smaller than the amount specified by the replication target, the worker retrieves the data. The CID from the new deal is sent to the smart contract`;
       }
       if (data.jobType === "renewal" || data.jobType === "all") {
         document.getElementById('renewJobStatus').innerHTML = 
-        `Renew Job Status: Executing ${data.jobType} job with ${data.epochs}.
+        `Renew Job Status: Executing renewal job every ${data.epochs} epochs.<br><br>
         Calling getExpiringDeals from smart contract instance to get deals that are expiring, perform a retrieval and submit the retrieved data to aggregators to create a new deal. The CID from the new deal is sent to the smart contract`;
       }
       if (data.jobType === "repair" || data.jobType === "all") {
-        document.getElementById('repairJobStatus').textContent = 
-        `Repair Job Status: Executing ${data.jobType} job with ${data.epochs}.
+        document.getElementById('repairJobStatus').innerHTML = 
+        `Repair Job Status: Executing repair job every ${data.epochs} epochs.<br><br>
         Calling the StateMarketStorageDeal operation on the Lotus endpoint to see if the deal has been inactive for longer than the repair threshold. If so, the worker resubmits the deal to the smart contract and creates a new deal.`;
       }
     } else {

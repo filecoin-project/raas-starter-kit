@@ -95,7 +95,7 @@ yarn test-edge
 yarn test-lighthouse
 ```
 
-**Note: some processes that the service performs (such as uploading deals to lighthouse) may take up to 24 hours. The node service has local state persistence in the `cache` directory in case of shutdown.**
+**Note: some processes that the service performs (such as uploading deals to lighthouse) may take up to 24 hours. Once you submit the deal, you do not need to keep the node running. Incomplete jobs will be maintained by the node. The node service has local state persistence in the `cache` directory in case of shutdown.**
 
 The service performs the following:
 - **Allows users to register various jobs to be performed by the service (performed by default every 12 hours)**.
