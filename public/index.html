@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./bundle.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            margin: 40px;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        h3 {
+            color: #333;
+            text-align: center;
+        }
+
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+
+        label, input, select {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        label {
+            font-size: 18px; /* You can adjust the size as needed */
+            font-weight: bold;
+            margin: 4px -5px;
+        }
+
+        input[type="submit"] {
+            background: #007BFF;
+            border: none;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .jobStatusBox {
+            flex-basis: 30%;
+            background: #f3f4f6;
+            padding: 15px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            flex: 1; 
+            border-left: 2px solid #0056b3;
+        }
+        
+        .jobStatusBox:first-child {
+            border-left: none;
+        }
+
+        .jobStatusContainer {
+            display: flex;
+            justify-content: space-around;
+            background: #fff;
+            padding: 20px;
+            max-width: 500px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin: 40px auto;
+        }
+
+        @media screen and (max-width: 600px) {
+            .jobStatusContainer {
+                flex-direction: column;
+            }
+            .jobStatusBox {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+    <title>Job Registration</title>
+</head>
+<body>
+    <h2>Upload a file to Lighthouse!</h2>
+
+    <!-- Separate form for file upload -->
+    <form id="jobRegistrationForm">
+        <label for="fileUpload">Input file here:</label>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">This upload will take only a few moments.</p>
+        <input type="file" id="fileUpload">
+        <button type="button" id="uploadButton">Upload</button><br><br>
+        <div id="uploadStatus"></div>
+    </form>
+
+    <h3>Deploy a Repair, Renewal and Replication Worker</h3>
+    <form id="registerJobForm" action="/api/register_job" method="post">
+        <label for="cid">CID:</label>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Submit a file above to populate this field, or insert a Lighthouse CID of your own</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">By default, registration runs each type of worker for a month with a replication target of 2 (data will be further replicated once in addition to the original upload) and renewal per 1000 epochs.</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">Workers can be registered individually! Job workers don't have to be bundled, and each job can have 0, 1, or 2 workers. Simply change the default input in `service.js` for your dApp, or use the sample frontend code in `public/index.html` to allow for user input.</p>
+        <p style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">The CID is passed to the post endpoint of the service node, and submits a data deal on-chain. A deal is also created with the aggregator.</p>
+        <h4 style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">This whole process may take up to 24 hours, during which you do not have to keep the node running.</h4>
+        <h4 style="font-size: 14px; color: #555; margin-top: 5px; margin-bottom: 10px;">If you're unsure what to do, try with the placeholder CID! It uploads a 1KB json file as a deal on-chain and to lighthouse.</h4>
+        <input type="text" id="cid" name="cid" placeholder="QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ" required><br><br>
+        <!-- Add other fields as needed -->
+        <!--
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="end_date" required><br><br>
+        <label for="jobType">Job Type:</label>
+        <select name="jobType" id="jobType" onchange="toggleEpochInput()">
+            <option value="replication">Replication</option>
+            <option value="renew">Renew</option>
+            <option value="repair">Repair</option>
+        </select><br><br>
+        <div id="epochInput" style="display: none;">
+            <label for="epochs">Epoch:</label>
+            <input type="number" id="epochs" name="epochs" min="0" placeholder="Enter epoch">
+        </div>
+        <div id="replicationTarget" style="display: none;">
+            <label for="replication">Replication Target:</label>
+            <input type="number" id="replication" name="replication" min="0" placeholder="Enter replication target">
+        </div>
+        <label for="aggregator">Aggregator</label>
+        <select name="aggregator" id="aggregator">
+            <option value="lighthouse">Lighthouse (recommended)</option>
+            <option value="edge">Edge</option>
+        </select><br><br>
+        -->
+        <input type="submit" value="Deploy!">
+        <div id="jobregStatus"></div>
+    </form>
+    <div class="jobStatusContainer">
+        <div class="jobStatusBox" id="replicationJobStatus">Replication Job Status: Not Registered Yet</div>
+        <div class="jobStatusBox" id="renewJobStatus">Renew Job Status: Not Registered Yet</div>
+        <div class="jobStatusBox" id="repairJobStatus">Repair Job Status: Not Registered Yet</div>
+    </div>
+</body>
+</html>
