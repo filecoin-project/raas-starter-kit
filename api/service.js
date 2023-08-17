@@ -254,7 +254,7 @@ async function executeRepairJob(job) {
 
     const currentBlockHeight = await getBlockNumber();
 
-    if (response.result.State.SectorStartEpoch > -1 && currentBlockHeight - deal.result.State.SlashEpoch > job.epochs)
+    if (response.result.State.SectorStartEpoch > -1 && currentBlockHeight - response.result.State.SlashEpoch > job.epochs)
     {
       try {
         await dealStatus.submit(job.cid);
