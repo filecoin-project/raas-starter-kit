@@ -226,9 +226,9 @@ async function executeRenewalJob(job) {
 }
 
 // Execute the repair job
-// The renewal job should retrieve all expiring storage deals of the cid.
-// For the expiring storage deals, the worker sends the cid to the aggregator smart contract,
-// and the worker_deal_creation_job will submit it to the aggregator to create a new storage deal.
+// The repair job should retrieve all deals containing the data's CID
+// Then, it should use StateMinerActiveSectors to verify if the (deal_id, miner) is being actively proven by the miner
+// If the sector/deal_id is not being actively proven for X epochs, submit data’s cid again
 async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   const method = "Filecoin.StateMarketStorageDeal";
