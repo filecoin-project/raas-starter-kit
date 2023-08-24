@@ -8,10 +8,11 @@ const app = express();
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const sleep = require('util').promisify(setTimeout);
 
 const port = 1337;
 const contractName = "DealStatus";
-const contractInstance = "0x65A1dC7FE50fe836145bd403746b73E89980E7ca";
+const contractInstance = "0x9448d76DEF558e76bF5F1E8b877344E70B07D421";
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
 const upload = multer({ dest: 'temp/' }); // Temporary directory for uploads
@@ -38,7 +39,7 @@ app.listen(port, () => {
   setInterval(async () => {
     console.log("Executing jobs");
     await executeJobs();
-  }, 20000); // 43200000 = 12 hours
+  }, 100000); // 43200000 = 12 hours
 });
 
 app.use(
@@ -197,13 +198,17 @@ async function executeReplicationJob(job) {
   } catch {
     console.log("Error: CID must be a hexadecimal string or bytes");
   }
-  const activeDeals = await dealStatus.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
+  const activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
   console.log(`Deal ${job.cid} at ${activeDeals.length}`);
   if (activeDeals.length < job.replicationTarget) {
-    try {
-      await dealStatus.submit(cid);
-    } catch (error) {
-      console.log("Error: ", error);
+    // Repeat the submission for as many times as the difference between the replication target and the number of active deals
+    for (let i = 0; i < job.replicationTarget - activeDeals.length; i++) {
+      try {
+        await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
+        sleep(20000)
+      } catch (error) {
+        console.log("Error: ", error);
+      }
     }
   }
 }
@@ -215,10 +220,10 @@ async function executeReplicationJob(job) {
 async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
-  const expiringDeals = await dealStatus.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
-  expiringDeals.forEach(async () => {
+  const expiringDeals = await dealStatus.callStatic.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
+  expiringDeals.forEach(async deal => {
     try {
-      await dealStatus.submit(job.cid);
+      await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
     } catch (error) {
       console.log("Error: ", error);
     }
@@ -233,7 +238,7 @@ async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   const method = "Filecoin.StateMarketStorageDeal";
   // Get all (deal_id, miner) containing the data’s cid
-  const allDeals = await dealStatus.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
+  const allDeals = await dealStatus.callStatic.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
     const dealId = deal.dealId;
@@ -257,7 +262,7 @@ async function executeRepairJob(job) {
     if (response.result.State.SectorStartEpoch > -1 && currentBlockHeight - deal.result.State.SlashEpoch > job.epochs)
     {
       try {
-        await dealStatus.submit(job.cid);
+        await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
       } catch (error) {
         console.log("Error: ", error);
       }
@@ -296,7 +301,8 @@ async function initializeDealCreationListener() {
       // To process the dealInfos before completion of deal is handled at dataRetrievalListener
       // Max retries: 18 (48 hours)
       // Initial delay: 1000 ms
-      if (!job.aggregator) {
+      if (job === undefined && !job.hasOwnProperty('aggregator')) {
+        // If the CID lookup doesn't yield a job
         console.log("Error: Aggregator type not specified for job with CID: ", cidString);
         // Remove the job if the aggregator type is not specified
         storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);

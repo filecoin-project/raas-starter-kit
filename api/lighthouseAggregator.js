@@ -86,7 +86,7 @@ class LighthouseAggregator {
             try {
                 let response = await axios.get(lighthouseDealInfosEndpoint, {
                     params: {
-                    cid: lighthouse_cid
+                        cid: lighthouse_cid
                     }
                 })
                 if (!response.data) {
@@ -120,7 +120,7 @@ class LighthouseAggregator {
                     }
                 }
             } catch (e) {
-                console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid);
+                console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid + e);
             }
             await sleep(delay);
             delay *= 2;
@@ -130,7 +130,8 @@ class LighthouseAggregator {
 
     async uploadFileAndMakeDeal(filePath) {
         try {
-            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY);
+            const dealParam = {"miner":[ process.env.MINER ], "network": process.env.NETWORK};
+            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY, false, dealParam);
             const lighthouse_cid = response.data.Hash;
             console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid);
             return lighthouse_cid;
