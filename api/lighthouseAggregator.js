@@ -4,7 +4,6 @@ const path = require('path');
 const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
-const { spawn } = require('child_process');
 const lighthouse = require('@lighthouse-web3/sdk');
 
 // Location of fetched data for each CID from edge
