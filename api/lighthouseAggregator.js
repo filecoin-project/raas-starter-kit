@@ -85,7 +85,8 @@ class LighthouseAggregator {
             try {
                 let response = await axios.get(lighthouseDealInfosEndpoint, {
                     params: {
-                        cid: lighthouse_cid
+                        cid: lighthouse_cid,
+                        network: "testnet" // Change the network to mainnet when ready
                     }
                 })
                 if (!response.data) {
