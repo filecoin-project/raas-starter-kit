@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@glif/filecoin-address": "^2.0.18",
-    "@lighthouse-web3/sdk": "^0.2.5",
+    "@lighthouse-web3/sdk": "^0.2.7",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
