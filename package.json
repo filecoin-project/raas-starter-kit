@@ -14,6 +14,7 @@
     "coverage": "hardhat coverage --solcoverjs ./.solcover.js",
     "fuzzing": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
     "chain": "hardhat node --network hardhat --no-deploy",
+    "start": "webpack serve --open",
     "service": "node api/service.js",
     "deploy-calibration": "npx hardhat deploy --network calibrationnet"
   },
@@ -53,9 +54,13 @@
     "dotenv": "^10.0.0",
     "express": "^4.18.2",
     "hardhat-deploy-ethers": "^0.3.0-beta.13",
+    "html-webpack-plugin": "^5.5.3",
+    "multer": "^1.4.5-lts.1",
     "sinon": "^15.2.0",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.4"
+    "typescript": "^4.9.4",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
   },
   "mocha": {
     "timeout": 10000000

@@ -6,13 +6,16 @@ import "../data-segment/Proof.sol";
 // Behavioral Interface for an aggregator oracle
 interface IAggregatorOracle {
     struct Deal {
+        // A unique identifier for the deal.
         uint64 dealId;
+        // The miner that is storing the data for the deal.
         uint64 minerId;
     }
 
-    // Event emitted when a new request is submitted
+    // Emitted when a new request is submitted with an ID and content identifier (CID).
     event SubmitAggregatorRequest(uint256 indexed id, bytes cid);
 
+    // Emitted when a request is completed, providing the request ID and deal ID.
     event CompleteAggregatorRequest(uint256 indexed id, uint64 indexed dealId);
 
     // Function that submits a new request to the oracle
