@@ -200,15 +200,15 @@ async function executeReplicationJob(job) {
   }
   const activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
   console.log(`Deal ${job.cid} at ${activeDeals.length} replications`);
-  if (activeDeals.length <= job.replicationTarget) {
+  if (activeDeals.length < job.replicationTarget) {
     // Repeat the submission for as many times as the difference between the replication target and the number of active deals
     console.log(`Replicating deal ${job.cid} to ${job.replicationTarget} replications`);
     for (let i = 0; i < job.replicationTarget - activeDeals.length; i++) {
+      await sleep(2000000);
       try {
         console.log(`Submitting replication deal`)
         await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
         // Wait a minute before submitting another.
-        sleep(6000000)
       } catch (error) {
         console.log("Error: ", error);
       }
