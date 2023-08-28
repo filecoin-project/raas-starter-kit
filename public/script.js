@@ -81,7 +81,7 @@ async function pollDealStatus(cid) {
     } else
     if (data.dealInfos) {
       console.log(data)
-      document.getElementById('jobregStatus').textContent = `Deal status: Completed! Miner: ${data.dealInfos.miner}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID}`;
+      document.getElementById('jobregStatus').textContent = `Deal status: Completed! Miner: ${data.dealInfos.miner[0]}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID[0]}`;
       if (data.jobType === "replication" || data.jobType === "all") {
         document.getElementById('replicationJobStatus').innerHTML = 
         `Replication Job Status: Executing replication job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}.<br><br>

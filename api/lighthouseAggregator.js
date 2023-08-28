@@ -101,19 +101,24 @@ class LighthouseAggregator {
                         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
                         return;
                     }
+                    let dealIds = [];
+                    let miner = [];
                     for (let i = 0; i < response.data.dealInfo.length; i++) {
-                        response.data.dealInfo[i].storageProvider.replace("t0", "")
+                        dealIds.push(response.data.dealInfo[i].dealId);
+                        miner.push(response.data.dealInfo[i].storageProvider.replace("t0", ""));
                     }
                     let dealInfos = {
                         txID: job.txID,
-                        dealID: response.data.dealInfo.dealId,
+                        dealID: dealIds,
                         inclusion_proof: response.data.proof.fileProof.inclusionProof,
                         verifier_data: response.data.proof.fileProof.verifierData,
                         // For each deal, the miner address is returned with a t0 prefix
                         // Replace the t0 prefix with an empty string to get the address
-                        miner: response.data.dealInfo.storageProvider,
+                        miner: miner,
                     }
-                    if (dealInfos.dealID != 0) {
+                    // If we receive a nonzero dealID, emit the DealReceived event
+                    if (dealInfos.dealID[0] != 0) {
+                        console.log("Lighthouse deal infos processed after receiving nonzero dealID: ", dealInfos);
                         this.eventEmitter.emit('DealReceived', dealInfos);
                         // Remove the job from the list
                         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);

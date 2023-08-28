@@ -39,7 +39,7 @@ app.listen(port, () => {
   setInterval(async () => {
     console.log("Executing jobs");
     await executeJobs();
-  }, 20000); // 43200000 = 12 hours
+  }, 50000); // 43200000 = 12 hours
 });
 
 app.use(
@@ -199,7 +199,7 @@ async function executeReplicationJob(job) {
     console.log("Error: CID must be a hexadecimal string or bytes");
   }
   const activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
-  console.log(`Deal ${job.cid} at ${activeDeals.length}`);
+  console.log(`Deal ${job.cid} at ${activeDeals.length} replications`);
   if (activeDeals.length <= job.replicationTarget) {
     // Repeat the submission for as many times as the difference between the replication target and the number of active deals
     console.log(`Replicating deal ${job.cid} to ${job.replicationTarget} replications`);
@@ -207,7 +207,8 @@ async function executeReplicationJob(job) {
       try {
         console.log(`Submitting replication deal`)
         await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
-        sleep(20000)
+        // Wait a minute before submitting another.
+        sleep(6000000)
       } catch (error) {
         console.log("Error: ", error);
       }
@@ -426,13 +427,14 @@ async function initializeDataRetrievalListener() {
         job.dealInfos = dealInfos;
       }
     });
+    saveJobsToState();
+    console.log("Deal received with dealInfos: ", dealInfos)
     try {
       // For each dealID, complete the deal
-      for (let i = 0; i < dealInfos.length; i++) {
-        console.log("Completing deal with dealID: ", dealIDs[i]);
+      for (let i = 0; i < dealIDs.length; i++) {
+        console.log("Completing deal with deal ID: ", dealIDs[i]);
         await dealStatus.complete(txID, dealIDs[i], miners[i], inclusionProof, verifierData);
-        console.log(storedNodeJobs);
-        console.log("Deal completed for deal ID: ", txID.toString());
+        console.log("Deal completed for deal ID: ", dealIDs[i]);
       }
     }
     catch (err) {
