@@ -145,7 +145,7 @@ curl --location 'http://localhost:1337/api/register_job' \
 --header 'User-Agent: SMB Redirect/1.0.0' \
 --header 'Content-Type: application/x-www-form-urlencoded' \
 --header 'Authorization: Basic ZDU5MWYyYzQtMzk0MS00ZWM4LTkyNTQtYjgzZDg1NmI2YmU5Om1xZkU5eklsVFFOdGVIUnY2WDEwQXVmYkNlN0pIUXVC' \
---data-urlencode 'cid=QmbY5ZWR4RjxG82eUeWCmsVD1MrHNZhBQz5J4yynKLvgfZ' \
+--data-urlencode 'cid=QmYSNU2i62v4EFvLehikb4njRiBrcWqH6STpMwduDcNmK6' \
 --data-urlencode 'endDate=2023-07-15' \
 --data-urlencode 'jobType=replication' \
 --data-urlencode 'replicationTarget=1' \

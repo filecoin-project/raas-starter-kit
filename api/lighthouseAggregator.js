@@ -101,12 +101,17 @@ class LighthouseAggregator {
                         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
                         return;
                     }
+                    for (let i = 0; i < response.data.dealInfo.length; i++) {
+                        response.data.dealInfo[i].storageProvider.replace("t0", "")
+                    }
                     let dealInfos = {
                         txID: job.txID,
-                        dealID: response.data.dealInfo[0].dealId,
+                        dealID: response.data.dealInfo.dealId,
                         inclusion_proof: response.data.proof.fileProof.inclusionProof,
                         verifier_data: response.data.proof.fileProof.verifierData,
-                        miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
+                        // For each deal, the miner address is returned with a t0 prefix
+                        // Replace the t0 prefix with an empty string to get the address
+                        miner: response.data.dealInfo.storageProvider,
                     }
                     if (dealInfos.dealID != 0) {
                         this.eventEmitter.emit('DealReceived', dealInfos);
@@ -130,8 +135,8 @@ class LighthouseAggregator {
 
     async uploadFileAndMakeDeal(filePath) {
         try {
-            const dealParam = {"miner":[ process.env.MINER ], "network": process.env.NETWORK};
-            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY, false, dealParam);
+            const dealParams = {miner:[ process.env.MINER ], network: process.env.NETWORK};
+            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY, false, dealParams);
             const lighthouse_cid = response.data.Hash;
             console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid);
             return lighthouse_cid;
