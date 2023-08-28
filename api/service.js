@@ -61,7 +61,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     jobType: req.body.jobType || "all",
     replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
-    epochs: req.body.epochs || 100000,
+    epochs: req.body.epochs || 1000,
   };
 
   if (newJob.cid != null && newJob.cid != "") {
