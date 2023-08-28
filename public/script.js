@@ -84,7 +84,7 @@ async function pollDealStatus(cid) {
       document.getElementById('jobregStatus').textContent = `Deal status: Completed! Miner: ${data.dealInfos.miner[0]}. DealID: https://calibration.filfox.info/en/deal/${data.dealInfos.dealID[0]}`;
       if (data.jobType === "replication" || data.jobType === "all") {
         document.getElementById('replicationJobStatus').innerHTML = 
-        `Replication Job Status: Executing replication job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals}/${data.replicationTarget}.<br><br>
+        `Replication Job Status: Executing replication job to ${data.replicationTarget} replications. Currently replications at ${data.currentActiveDeals.length}/${data.replicationTarget}.<br><br>
         Calling getActiveDeals from smart contract instance to get all the active deals of the cid. If the number of active deals is smaller than the amount specified by the replication target, the worker retrieves the data. The CID from the new deal is sent to the smart contract`;
       }
       if (data.jobType === "renewal" || data.jobType === "all") {

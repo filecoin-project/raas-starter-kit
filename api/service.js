@@ -12,7 +12,7 @@ const sleep = require('util').promisify(setTimeout);
 
 const port = 1337;
 const contractName = "DealStatus";
-const contractInstance = "0x9448d76DEF558e76bF5F1E8b877344E70B07D421"; // The user will also input
+const contractInstance = "0x6ec8722e6543fB5976a547434c8644b51e24785b"; // The user will also input
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
 const upload = multer({ dest: 'temp/' }); // Temporary directory for uploads
@@ -61,7 +61,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     jobType: req.body.jobType || "all",
     replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
-    epochs: req.body.epochs || 1000
+    epochs: req.body.epochs || 100000,
   };
 
   if (newJob.cid != null && newJob.cid != "") {
@@ -202,7 +202,7 @@ async function executeReplicationJob(job) {
   console.log(`Deal ${job.cid} at ${activeDeals.length} replications`);
   if (activeDeals.length < job.replicationTarget) {
     // Repeat the submission for as many times as the difference between the replication target and the number of active deals
-    console.log(`Replicating deal ${job.cid} to ${job.replicationTarget} replications`);
+    console.log(`Replicating deal ${job.cid} to ${job.replicationTarget} replications. Currently at ${activeDeals.length} replications.`);
     for (let i = 0; i < job.replicationTarget - activeDeals.length; i++) {
       await sleep(2000000);
       try {
@@ -210,10 +210,11 @@ async function executeReplicationJob(job) {
         await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
         // Wait a minute before submitting another.
       } catch (error) {
-        console.log("Error: ", error);
+        console.log("Error replicating: ", error);
       }
     }
   }
+  console.log("Replication successful");
 }
 
 // Execute the renewal job
@@ -224,13 +225,16 @@ async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
   const expiringDeals = await dealStatus.callStatic.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
-  expiringDeals.forEach(async deal => {
+  console.log(`Deal ${job.cid} has ${expiringDeals.length} expiring deals: renewing (if any).`);
+  for (let i = 0; i < expiringDeals.length; i++) {
     try {
       await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
+      await sleep(20000);
     } catch (error) {
-      console.log("Error: ", error);
+      console.log("Error renewing: ", error);
     }
-  });
+  }
+  console.log("Renewal successful");
 }
 
 // Execute the repair job
@@ -242,6 +246,7 @@ async function executeRepairJob(job) {
   const method = "Filecoin.StateMarketStorageDeal";
   // Get all (deal_id, miner) containing the data’s cid
   const allDeals = await dealStatus.callStatic.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
+  console.log(`Deal ${job.cid} has ${allDeals.length} deals: repairing if any are broken.`);
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
     const dealId = deal.dealId.toNumber();
@@ -262,15 +267,16 @@ async function executeRepairJob(job) {
 
     const currentBlockHeight = await getBlockNumber();
 
-    if (response.data.result.State.SectorStartEpoch > -1 && currentBlockHeight - response.data.result.State.SlashEpoch > job.epochs)
+    if ((response.data.result.State.SectorStartEpoch > -1 && response.data.result.State.SlashEpoch != -1) && currentBlockHeight - response.data.result.State.SlashEpoch > job.epochs)
     {
       try {
         await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
       } catch (error) {
-        console.log("Error: ", error);
+        console.log("Error repairing: ", error);
       }
     }
   });
+  console.log("Repair successful");
 }
 
 // Initialize the listener for the Deal Creation event

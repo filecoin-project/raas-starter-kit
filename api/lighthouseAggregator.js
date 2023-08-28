@@ -103,10 +103,10 @@ class LighthouseAggregator {
                     }
                     let dealIds = [];
                     let miner = [];
-                    for (let i = 0; i < response.data.dealInfo.length; i++) {
-                        dealIds.push(response.data.dealInfo[i].dealId);
-                        miner.push(response.data.dealInfo[i].storageProvider.replace("t0", ""));
-                    }
+                    response.data.dealInfo.forEach(item => {
+                        dealIds.push(item.dealId);
+                        miner.push(item.storageProvider.replace("t0", ""));
+                    });
                     let dealInfos = {
                         txID: job.txID,
                         dealID: dealIds,
@@ -117,7 +117,7 @@ class LighthouseAggregator {
                         miner: miner,
                     }
                     // If we receive a nonzero dealID, emit the DealReceived event
-                    if (dealInfos.dealID[0] != 0) {
+                    if (dealInfos.dealID[0] != null) {
                         console.log("Lighthouse deal infos processed after receiving nonzero dealID: ", dealInfos);
                         this.eventEmitter.emit('DealReceived', dealInfos);
                         // Remove the job from the list
