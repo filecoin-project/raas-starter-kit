@@ -8,10 +8,11 @@ const app = express();
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const sleep = require('util').promisify(setTimeout);
 
 const port = 1337;
 const contractName = "DealStatus";
-const contractInstance = "0x65A1dC7FE50fe836145bd403746b73E89980E7ca";
+const contractInstance = "0x6ec8722e6543fB5976a547434c8644b51e24785b"; // The user will also input
 const EdgeAggregator = require('./edgeAggregator.js');
 const LighthouseAggregator = require('./lighthouseAggregator.js');
 const upload = multer({ dest: 'temp/' }); // Temporary directory for uploads
@@ -38,7 +39,7 @@ app.listen(port, () => {
   setInterval(async () => {
     console.log("Executing jobs");
     await executeJobs();
-  }, 20000); // 43200000 = 12 hours
+  }, 50000); // 43200000 = 12 hours
 });
 
 app.use(
@@ -60,7 +61,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     jobType: req.body.jobType || "all",
     replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
-    epochs: req.body.epochs || 1000
+    epochs: req.body.epochs || 1000,
   };
 
   if (newJob.cid != null && newJob.cid != "") {
@@ -132,7 +133,7 @@ app.get('/api/deal_status', async (req, res) => {
   }
   let activeDeals;
   try {
-    activeDeals = await dealStatus.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
+    activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
   }
   catch (err) {
     console.log("An error has occurred when retrieving deal status: ", err);
@@ -174,7 +175,7 @@ async function registerJob(newJob) {
   // 3. Check if newJob.endDate is a valid date
   // 4. Check if newJob.jobType is either 'renew' or 'replication'
   // 5. Check if newJob.replicationTarget is a number
-  console.log("Executing deal creation job from API request with CID: ", newJob.cid);
+  console.log("Executing deal creation job with CID: ", newJob.cid);
 
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   await dealStatus.submit(ethers.utils.toUtf8Bytes(newJob.cid));
@@ -197,15 +198,23 @@ async function executeReplicationJob(job) {
   } catch {
     console.log("Error: CID must be a hexadecimal string or bytes");
   }
-  const activeDeals = await dealStatus.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
-  console.log(`Deal ${job.cid} at ${activeDeals.length}`);
+  const activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(job.cid));
+  console.log(`Deal ${job.cid} at ${activeDeals.length} replications`);
   if (activeDeals.length < job.replicationTarget) {
-    try {
-      await dealStatus.submit(cid);
-    } catch (error) {
-      console.log("Error: ", error);
+    // Repeat the submission for as many times as the difference between the replication target and the number of active deals
+    console.log(`Replicating deal ${job.cid} to ${job.replicationTarget} replications. Currently at ${activeDeals.length} replications.`);
+    for (let i = 0; i < job.replicationTarget - activeDeals.length; i++) {
+      await sleep(2000000);
+      try {
+        console.log(`Submitting replication deal`)
+        await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
+        // Wait a minute before submitting another.
+      } catch (error) {
+        console.log("Error replicating: ", error);
+      }
     }
   }
+  console.log("Replication successful");
 }
 
 // Execute the renewal job
@@ -215,14 +224,17 @@ async function executeReplicationJob(job) {
 async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
-  const expiringDeals = await dealStatus.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
-  expiringDeals.forEach(async () => {
+  const expiringDeals = await dealStatus.callStatic.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
+  console.log(`Deal ${job.cid} has ${expiringDeals.length} expiring deals: renewing (if any).`);
+  for (let i = 0; i < expiringDeals.length; i++) {
     try {
-      await dealStatus.submit(job.cid);
+      await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
+      await sleep(20000);
     } catch (error) {
-      console.log("Error: ", error);
+      console.log("Error renewing: ", error);
     }
-  });
+  }
+  console.log("Renewal successful");
 }
 
 // Execute the repair job
@@ -233,10 +245,11 @@ async function executeRepairJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   const method = "Filecoin.StateMarketStorageDeal";
   // Get all (deal_id, miner) containing the data’s cid
-  const allDeals = await dealStatus.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
+  const allDeals = await dealStatus.callStatic.getAllDeals(ethers.utils.toUtf8Bytes(job.cid));
+  console.log(`Deal ${job.cid} has ${allDeals.length} deals: repairing if any are broken.`);
   allDeals.forEach(async deal => {
     // Takes integer format (need to prefix f0 for API call).
-    const dealId = deal.dealId;
+    const dealId = deal.dealId.toNumber();
     const params = [dealId, null];
 
     const body = {
@@ -254,15 +267,16 @@ async function executeRepairJob(job) {
 
     const currentBlockHeight = await getBlockNumber();
 
-    if (response.result.State.SectorStartEpoch > -1 && currentBlockHeight - deal.result.State.SlashEpoch > job.epochs)
+    if ((response.data.result.State.SectorStartEpoch > -1 && response.data.result.State.SlashEpoch != -1) && currentBlockHeight - response.data.result.State.SlashEpoch > job.epochs)
     {
       try {
-        await dealStatus.submit(job.cid);
+        await dealStatus.submit(ethers.utils.toUtf8Bytes(job.cid));
       } catch (error) {
-        console.log("Error: ", error);
+        console.log("Error repairing: ", error);
       }
     }
   });
+  console.log("Repair successful");
 }
 
 // Initialize the listener for the Deal Creation event
@@ -296,7 +310,8 @@ async function initializeDealCreationListener() {
       // To process the dealInfos before completion of deal is handled at dataRetrievalListener
       // Max retries: 18 (48 hours)
       // Initial delay: 1000 ms
-      if (!job.aggregator) {
+      if (job === undefined) {
+        // If the CID lookup doesn't yield a job
         console.log("Error: Aggregator type not specified for job with CID: ", cidString);
         // Remove the job if the aggregator type is not specified
         storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
@@ -396,8 +411,8 @@ async function initializeDataRetrievalListener() {
   lighthouseAggregatorInstance.eventEmitter.on('DealReceived', async dealInfos => {
     // Process the dealInfos
     let txID = dealInfos.txID.toString();
-    let dealID = dealInfos.dealID;
-    let miner = dealInfos.miner;
+    let dealIDs = dealInfos.dealID;
+    let miners = dealInfos.miner;
     let inclusionProof = {
       proofIndex: {
         index: '0x' + dealInfos.inclusion_proof.proofIndex.index,
@@ -412,17 +427,21 @@ async function initializeDataRetrievalListener() {
     verifierData.commPc = '0x' + verifierData.commPc;
     // The size piece is originally in hex. Convert it to a number.
     verifierData.sizePc = parseInt(verifierData.sizePc, 16);
-    console.log(verifierData);
+    // Add on the dealInfos to the existing job stored inside the storedNodeJobs.
+    storedNodeJobs.forEach(job => {
+      if (job.txID === dealInfos.txID) {
+        job.dealInfos = dealInfos;
+      }
+    });
+    saveJobsToState();
+    console.log("Deal received with dealInfos: ", dealInfos)
     try {
-      await dealStatus.complete(txID, dealID, miner, inclusionProof, verifierData);
-      // Add on the dealInfos to the existing job stored inside the storedNodeJobs.
-      storedNodeJobs.forEach(job => {
-        if (job.txID === dealInfos.txID) {
-          job.dealInfos = dealInfos;
-        }
-      });
-      console.log(storedNodeJobs);
-      console.log("Deal completed for deal ID: ", txID.toString());
+      // For each dealID, complete the deal
+      for (let i = 0; i < dealIDs.length; i++) {
+        console.log("Completing deal with deal ID: ", dealIDs[i]);
+        await dealStatus.complete(txID, dealIDs[i], miners[i], inclusionProof, verifierData);
+        console.log("Deal completed for deal ID: ", dealIDs[i]);
+      }
     }
     catch (err) {
       console.log("Error submitting file for completion: ", err);

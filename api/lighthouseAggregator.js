@@ -4,7 +4,6 @@ const path = require('path');
 const { ethers } = require("hardhat");
 const EventEmitter = require('events');
 const sleep = require('util').promisify(setTimeout);
-const { spawn } = require('child_process');
 const lighthouse = require('@lighthouse-web3/sdk');
 
 // Location of fetched data for each CID from edge
@@ -86,7 +85,8 @@ class LighthouseAggregator {
             try {
                 let response = await axios.get(lighthouseDealInfosEndpoint, {
                     params: {
-                    cid: lighthouse_cid
+                        cid: lighthouse_cid,
+                        network: "testnet" // Change the network to mainnet when ready
                     }
                 })
                 if (!response.data) {
@@ -101,14 +101,24 @@ class LighthouseAggregator {
                         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.contentID != contentID);
                         return;
                     }
+                    let dealIds = [];
+                    let miner = [];
+                    response.data.dealInfo.forEach(item => {
+                        dealIds.push(item.dealId);
+                        miner.push(item.storageProvider.replace("t0", ""));
+                    });
                     let dealInfos = {
                         txID: job.txID,
-                        dealID: response.data.dealInfo[0].dealId,
+                        dealID: dealIds,
                         inclusion_proof: response.data.proof.fileProof.inclusionProof,
                         verifier_data: response.data.proof.fileProof.verifierData,
-                        miner: response.data.dealInfo[0].storageProvider.replace("f0", ""),
+                        // For each deal, the miner address is returned with a t0 prefix
+                        // Replace the t0 prefix with an empty string to get the address
+                        miner: miner,
                     }
-                    if (dealInfos.dealID != 0) {
+                    // If we receive a nonzero dealID, emit the DealReceived event
+                    if (dealInfos.dealID[0] != null) {
+                        console.log("Lighthouse deal infos processed after receiving nonzero dealID: ", dealInfos);
                         this.eventEmitter.emit('DealReceived', dealInfos);
                         // Remove the job from the list
                         this.aggregatorJobs = this.aggregatorJobs.filter(job => job.lighthouse_cid != lighthouse_cid);
@@ -120,7 +130,7 @@ class LighthouseAggregator {
                     }
                 }
             } catch (e) {
-                console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid);
+                console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid + e);
             }
             await sleep(delay);
             delay *= 2;
@@ -130,7 +140,8 @@ class LighthouseAggregator {
 
     async uploadFileAndMakeDeal(filePath) {
         try {
-            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY);
+            const dealParams = {miner:[ process.env.MINER ], network: process.env.NETWORK};
+            const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY, false, dealParams);
             const lighthouse_cid = response.data.Hash;
             console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid);
             return lighthouse_cid;
