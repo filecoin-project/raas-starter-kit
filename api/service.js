@@ -61,7 +61,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     jobType: req.body.jobType || "all",
     replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
-    epochs: req.body.epochs || 5,
+    epochs: req.body.epochs || 4,
   };
 
   if (newJob.cid != null && newJob.cid != "") {
@@ -228,7 +228,7 @@ async function executeReplicationJob(job) {
 async function executeRenewalJob(job) {
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
   // Get all expiring deals for the job's CID within a certain epoch
-  const expiringDeals = await dealStatus.callStatic.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 1000);
+  const expiringDeals = await dealStatus.callStatic.getExpiringDeals(ethers.utils.toUtf8Bytes(job.cid), job.epochs ? job.epochs : 4);
   console.log(`Deal ${job.cid} has ${expiringDeals.length} expiring deals: renewing (if any).`);
   for (let i = 0; i < expiringDeals.length; i++) {
     try {
