@@ -61,7 +61,7 @@ app.post('/api/register_job', upload.none(), async (req, res) => {
     jobType: req.body.jobType || "all",
     replicationTarget: req.body.replicationTarget || 2,
     aggregator: req.body.aggregator || "lighthouse",
-    epochs: req.body.epochs || 1000,
+    epochs: req.body.epochs || 5,
   };
 
   if (newJob.cid != null && newJob.cid != "") {
@@ -178,7 +178,11 @@ async function registerJob(newJob) {
   console.log("Executing deal creation job with CID: ", newJob.cid);
 
   const dealStatus = await ethers.getContractAt(contractName, contractInstance);
-  await dealStatus.submit(ethers.utils.toUtf8Bytes(newJob.cid));
+  try {
+    await dealStatus.submit(ethers.utils.toUtf8Bytes(newJob.cid));
+  } catch (error) {
+    console.log("Error submitting deal creation job: ", error);
+  }
 
   if (!storedNodeJobs.some(job => job.cid == newJob.cid)) {
     storedNodeJobs.push(newJob);
@@ -313,15 +317,16 @@ async function initializeDealCreationListener() {
       if (job === undefined) {
         // If the CID lookup doesn't yield a job
         console.log("Error: Aggregator type not specified for job with CID: ", cidString);
-        // Remove the job if the aggregator type is not specified
-        storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1);
-        saveJobsToState();
       } else {
         if (job.aggregator === 'edge') {
           const contentID = await edgeAggregatorInstance.processFile(cidString, transactionId);
           edgeAggregatorInstance.processDealInfos(18, 1000, contentID);
         }
         else if (job.aggregator === 'lighthouse') {
+          // Reattach the event listener
+          if (dealStatus.listenerCount("SubmitAggregatorRequest") === 0) {
+            dealStatus.once("SubmitAggregatorRequest", handleEvent);
+          }
           try {
             const result = await lighthouseProcessWithRetry(cidString, transactionId);
             return result;
@@ -338,8 +343,6 @@ async function initializeDealCreationListener() {
           saveJobsToState();
         }
       }
-      
-      // After processing this event, reattach the event listener
       if (dealStatus.listenerCount("SubmitAggregatorRequest") === 0) {
         dealStatus.once("SubmitAggregatorRequest", handleEvent);
       }
