@@ -140,7 +140,7 @@ class LighthouseAggregator {
 
     async uploadFileAndMakeDeal(filePath) {
         try {
-            const dealParams = {miner:JSON.stringify([ process.env.MINER ]), repair_threshold: null, renew_threshold: null, network: process.env.NETWORK};
+            const dealParams = {miner:[ process.env.MINER ], repair_threshold: null, renew_threshold: null, network: process.env.NETWORK};
             const response = await lighthouse.upload(filePath, process.env.LIGHTHOUSE_API_KEY, false, dealParams);
             const lighthouse_cid = response.data.Hash;
             console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid);
