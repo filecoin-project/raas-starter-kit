@@ -30,6 +30,8 @@ interface IAggregatorOracle {
         InclusionVerifierData memory _verifierData
     ) external returns (InclusionAuxData memory);
 
+    function getAllCIDs() external view returns (bytes[] memory);
+
     // Get all deal IDs for a specified cid
     function getAllDeals(bytes memory _cid) external view returns (Deal[] memory);
 

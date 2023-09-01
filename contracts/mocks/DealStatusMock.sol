@@ -104,4 +104,3 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         return expiringDealIds;
     }
 }
-
