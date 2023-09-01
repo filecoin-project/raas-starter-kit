@@ -64,6 +64,14 @@ contract DealStatus is IAggregatorOracle, Proof {
         return cidToDeals[_cid];
     }
 
+    function getAllCIDs() external view returns (bytes[] memory) {
+        bytes[] memory cids;
+        for (uint256 i = 0; i < transactionId; i++) {
+            cids[i] = txIdToCid[i];
+        }
+        return cids;
+    }
+
     // getActiveDeals should return all the _cid's active dealIds
     function getActiveDeals(bytes memory _cid) external returns (Deal[] memory) {
         // get all the deal ids for the cid
