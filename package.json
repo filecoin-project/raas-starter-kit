@@ -27,7 +27,7 @@
     "@types/node": "^18.11.15",
     "chai": "^4.3.7",
     "cids": "^1.1.9",
-    "ethereum-waffle": "^3.4.0",
+    "ethereum-waffle": "^4.0.10",
     "ethers": "^5.5.1",
     "hardhat": "^2.11.2",
     "hardhat-contract-sizer": "^2.4.0",
