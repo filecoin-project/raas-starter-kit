@@ -7,9 +7,6 @@ pragma solidity ^0.8.17;
 import "./interfaces/IAggregatorOracle.sol";
 import "./data-segment/Proof.sol";
 
-import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
-import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
-
 // Delta that implements the AggregatorOracle interface
 contract DealStatus is IAggregatorOracle, Proof {
     uint256 private transactionId;
