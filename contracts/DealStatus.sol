@@ -100,7 +100,7 @@ contract DealStatus is IAggregatorOracle, Proof {
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealId);
 
-            if (block.timestamp < uint64(dealTerm.end) - epochs || block.timestamp > uint64(dealTerm.end)) {
+            if (block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)) {
                 delete expiringDealIds[i];
             }
         }
