@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "../data-segment/ProofTypes.sol";
+import {
+    ProofData,
+    InclusionProof,
+    InclusionVerifierData,
+    InclusionAuxData,
+    SegmentDesc,
+    Fr32
+} from "../data-segment/ProofTypes.sol";
 
 // Behavioral Interface for an aggregator oracle
 interface IAggregatorOracle {
