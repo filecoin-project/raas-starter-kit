@@ -31,9 +31,7 @@ class LighthouseAggregator {
         // For any files that do, poll the deal status
         this.aggregatorJobs.forEach(async job => {
             if (!job.lighthouse_cid) {
-                console.log("Redownloading file with CID: ", job.cid);
-                await this.downloadFile(job.cid);
-                const lighthouse_cid = await this.uploadFileAndMakeDeal(path.join(dataDownloadDir, job.cid));
+                const lighthouse_cid = await this.pinCIDAndMakeDeal(job.cid);
                 job.lighthouse_cid = lighthouse_cid;
                 this.saveState();
             }
@@ -43,39 +41,24 @@ class LighthouseAggregator {
     }
 
     async processFile(cid, txID) {
-        let downloaded_file_path;
-        let lighthouse_cid;
-
-        // Try to download the file only if the cid is new
+        // Queue jobs only if the cid is new
         if (!this.aggregatorJobs.some(job => job.cid == cid)) {
-            try {
-                downloaded_file_path = await this.downloadFile(cid);
-                this.enqueueJob(cid, txID);
-                this.saveState();
-            } catch (err) {
-                // If an error occurred, log it
-                console.error(`Failed to download file: ${err}`);
-                return;
-            }
+            this.enqueueJob(cid, txID);
+            this.saveState();
         } else {
-            // If the file has already been downloaded, use the existing file
-            downloaded_file_path = path.join(dataDownloadDir, cid);
             // Update the txID for the job
             this.aggregatorJobs.find(job => job.cid == cid).txID = txID;
         }
 
-        // Wait for the file to be downloaded
-        await sleep(2500);
-
-        // Upload the file (either the downloaded one or the error file)
-        lighthouse_cid = await this.uploadFileAndMakeDeal(downloaded_file_path);
+        // Pin cid to lighthouse
+        const lighthouse_cid = await this.pinCIDAndMakeDeal(cid);
 
         // Find the job with the matching CID and update the lighthouse_cid
         // lighthouse_cid depends on whether or not content was uploaded to edge or lighthouse.
         this.aggregatorJobs.find(job => job.cid == cid).lighthouse_cid = lighthouse_cid;
         this.saveState();
 
-        return lighthouse_cid;
+        return cid;
     }
 
     async processDealInfos(maxRetries, initialDelay, lighthouse_cid) {
@@ -136,7 +119,7 @@ class LighthouseAggregator {
             delay *= 2;
         }
         this.eventEmitter.emit('error', new Error('All retries failed, totaling: ' + maxRetries));
-    }    
+    }
 
     async uploadFileAndMakeDeal(filePath) {
         try {
@@ -150,31 +133,26 @@ class LighthouseAggregator {
         }
     }
 
-    async downloadFile(lighthouse_cid, downloadPath = path.join(dataDownloadDir, lighthouse_cid)) {
-        console.log("Downloading file with CID: ", lighthouse_cid);
-        let response;
-    
-        // Ensure 'download' directory exists
-        fs.mkdir(dataDownloadDir, {
-            recursive: true
-        }, (err) => {
-            if (err) {
-                console.error(err);
-            }
-        });
-
-        response = await axios({
-            method: 'GET',
-            url: `${lighthouseDealDownloadEndpoint}${lighthouse_cid}`,
-            responseType: 'stream',
-        });
-
+    async pinCIDAndMakeDeal(cidString) {
         try {
-            const filePath = await this.saveResponseToFile(response, downloadPath);
-            console.log(`File saved at ${filePath}`);
-            return filePath
-        } catch (err) {
-            console.error(`Error saving file: ${err}`);
+            const data = {
+                "cid": cidString,
+                "raas": {
+                    "network": "calibration",
+                }
+            }
+            const pinResponse = await axios.post(
+                "http://localhost:8000/api/lighthouse/pin",
+                data,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.LIGHTHOUSE_API_KEY}`
+                    }
+                }
+            )
+            return cidString;
+        } catch (error) {
+            console.error('An error occurred:', error);
         }
     }
 
