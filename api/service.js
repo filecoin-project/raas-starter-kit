@@ -1,5 +1,6 @@
 const express = require('express')
 const { ethers } = require("hardhat");
+const cors = require('cors');
 
 const { networkConfig } = require("../helper-hardhat-config")
 
@@ -23,6 +24,7 @@ let edgeAggregatorInstance;
 let lighthouseAggregatorInstance;
 let isDealCreationListenerActive = false;
 
+app.use(cors());
 app.listen(port, () => {
   if (!isDealCreationListenerActive) {
     isDealCreationListenerActive = true;
