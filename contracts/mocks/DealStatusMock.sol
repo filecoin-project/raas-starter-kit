@@ -96,9 +96,7 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealId);
 
-            if (
-                block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)
-            ) {
+            if (block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)) {
                 delete expiringDealIds[i];
             }
         }
