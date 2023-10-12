@@ -158,9 +158,7 @@ describe("Aggregator Tests", function () {
                 commPa: "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
                 sizePa: 0x800000000,
             }
-            await expect(this.dealstatus.complete(1, 2222, 4321, incProof, verifData))
-                .to.emit(this.dealstatus, "CompleteAggregatorRequest")
-                .withArgs(1, 2222)
+            await expect(this.dealstatus.complete(1, 2222, 4321, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 2222)
             const allDeals = await this.dealstatus.getAllDeals(
                 "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
             )
@@ -175,10 +173,7 @@ describe("Aggregator Tests", function () {
         })
 
         it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function () {
-            const expiringDeals = await this.dealstatus.callStatic.getExpiringDeals(
-                "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
-                1000
-            )
+            const expiringDeals = await this.dealstatus.callStatic.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000)
             expect(expiringDeals.toString()).to.be.equal("1234,4321,2222,4321")
         })
         it("Should be able to return the miner of a deal", async function () {
