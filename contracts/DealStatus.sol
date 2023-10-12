@@ -62,9 +62,9 @@ contract DealStatus is IAggregatorOracle, Proof {
     }
 
     function getAllCIDs() external view returns (bytes[] memory) {
-        bytes[] memory cids;
+        bytes[] memory cids = new bytes[](transactionId);
         for (uint256 i = 0; i < transactionId; i++) {
-            cids[i] = txIdToCid[i];
+            cids[i] = txIdToCid[i + 1];
         }
         return cids;
     }

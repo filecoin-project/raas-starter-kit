@@ -85,7 +85,7 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
     }
 
     // getExpiringDeals should return all the deals' dealIds if they are expiring within `epochs`
-    function getExpiringDeals(bytes memory _cid, uint64 epochs) external view returns (Deal[] memory) {
+    function getExpiringDeals(bytes memory _cid,uint64 epochs) external view returns (Deal[] memory) {
         // the logic is similar to the above, but use this api call:
         // https://github.com/Zondax/filecoin-solidity/blob/master/contracts/v0.8/MarketAPI.sol#LL110C9-L110C9
         Deal[] memory expiringDealIds;
@@ -102,5 +102,13 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         }
 
         return expiringDealIds;
+    }
+
+    function getAllCIDs() external view returns (bytes[] memory) {
+        bytes[] memory cids = new bytes[](transactionId);
+        for (uint256 i = 0; i < transactionId; i++) {
+            cids[i] = txIdToCid[i + 1];
+        }
+        return cids;
     }
 }
