@@ -10,6 +10,8 @@ const lighthouse = require('@lighthouse-web3/sdk');
 const dataDownloadDir = path.join(__dirname, 'download');
 const lighthouseDealDownloadEndpoint = process.env.LIGHTHOUSE_DEAL_DOWNLOAD_ENDPOINT;
 const lighthouseDealInfosEndpoint = process.env.LIGHTHOUSE_DEAL_INFOS_ENDPOINT;
+const lighthousePinEndpoint = process.env.LIGHTHOUSE_PIN_ENDPOINT
+
 if (!lighthouseDealDownloadEndpoint) {
     throw new Error("Missing environment variables: data endpoints");
 }
@@ -142,7 +144,7 @@ class LighthouseAggregator {
                 }
             }
             const pinResponse = await axios.post(
-                "http://localhost:8000/api/lighthouse/pin",
+                lighthousePinEndpoint,
                 data,
                 {
                     headers: {
