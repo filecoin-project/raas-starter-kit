@@ -32,6 +32,24 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         return transactionId;
     }
 
+    function submit_raas(
+        bytes memory _cid,
+        uint replication_num_copies,
+        uint repair_threshold,
+        uint renewal_threshold,
+        string[] memory miner
+    ) external returns (uint256) {
+        // Increment the transaction ID
+        transactionId++;
+
+        // Save _cid
+        txIdToCid[transactionId] = _cid;
+
+        // Emit the event
+        emit SubmitAggregatorRequestRaaS(transactionId, _cid, replication_num_copies, repair_threshold, renewal_threshold, miner);
+        return transactionId;
+    }
+
     // TODO: use _miner integer
     function complete(
         uint256 _id,

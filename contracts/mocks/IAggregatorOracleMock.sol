@@ -13,6 +13,16 @@ interface IAggregatorOracle {
     // Event emitted when a new request is submitted
     event SubmitAggregatorRequest(uint256 indexed id, bytes cid);
 
+    // Emitted when a new request is submitted with an ID, content identifier (CID) and other deal parameters.
+    event SubmitAggregatorRequestRaaS(
+        uint256 indexed id,
+        bytes cid,
+        uint replication_num_copies,
+        uint repair_threshold,
+        uint renewal_threshold,
+        string[] miner
+    );
+
     event CompleteAggregatorRequest(uint256 indexed id, uint64 indexed dealId);
 
     // Function that submits a new request to the oracle
