@@ -32,12 +32,11 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         return transactionId;
     }
 
-    function submit_raas(
+    function submitRaaS(
         bytes memory _cid,
-        uint replication_num_copies,
-        uint repair_threshold,
-        uint renewal_threshold,
-        string[] memory miner
+		uint256 _replication_target,
+        uint256 _repair_threshold,
+		uint256 _renew_threshold
     ) external returns (uint256) {
         // Increment the transaction ID
         transactionId++;
@@ -46,7 +45,7 @@ contract DealStatusMock is IAggregatorOracle, ProofMock {
         txIdToCid[transactionId] = _cid;
 
         // Emit the event
-        emit SubmitAggregatorRequestRaaS(transactionId, _cid, replication_num_copies, repair_threshold, renewal_threshold, miner);
+        emit SubmitAggregatorRequestWithRaaS(transactionId, _cid, _replication_target, _repair_threshold, _renew_threshold);
         return transactionId;
     }
 

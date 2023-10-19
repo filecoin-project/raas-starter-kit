@@ -22,21 +22,24 @@ interface IAggregatorOracle {
     // Emitted when a new request is submitted with an ID and content identifier (CID).
     event SubmitAggregatorRequest(uint256 indexed id, bytes cid);
 
-    // Emitted when a new request is submitted with an ID, content identifier (CID) and other deal parameters.
-    event SubmitAggregatorRequestRaaS(
-        uint256 indexed id,
-        bytes cid,
-        uint replication_num_copies,
-        uint repair_threshold,
-        uint renewal_threshold,
-        string[] miner
-    );
+    // Emitted when a new request is submitted with an ID, content identifier (CID), and RaaS parameters
+    event SubmitAggregatorRequestWithRaaS(uint256 indexed id, bytes cid,
+										  uint256 _replication_target, uint256 _repair_threshold,
+										  uint256 _renew_threshold);
 
     // Emitted when a request is completed, providing the request ID and deal ID.
     event CompleteAggregatorRequest(uint256 indexed id, uint64 indexed dealId);
 
     // Function that submits a new request to the oracle
     function submit(bytes memory _cid) external returns (uint256);
+
+    // Function to submit a new file to the aggregator, specifing the raas parameters
+	function submitRaaS(
+        bytes memory _cid,
+		uint256 _replication_target,
+        uint256 _repair_threshold,
+		uint256 _renew_threshold
+    ) external returns (uint256);
 
     // Callback function that is called by the aggregator
     function complete(
