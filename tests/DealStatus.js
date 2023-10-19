@@ -191,10 +191,10 @@ describe("Aggregator Tests", function () {
             this.dealstatus.submit(cid)
         })
         
-        it("Should submit a valid request with other deal parameters", async function () {
-            await expect(this.dealstatus.submit_raas(cid, 2, 100, 200, ['miner1', 'miner2', 'miner3']))
-                .to.emit(this.dealstatus, "SubmitAggregatorRequestRaaS")
-                .withArgs(3, cid, 2, 100, 200, ['miner1', 'miner2', 'miner3'])
+        it("Should submit a valid request with submitRaaS ", async function () {
+            await expect(this.dealstatus.submitRaaS(cid, 2, 100, 200))
+                .to.emit(this.dealstatus, "SubmitAggregatorRequestWithRaaS")
+                .withArgs(3, cid, 2, 100, 200)
         })
     })
 })
