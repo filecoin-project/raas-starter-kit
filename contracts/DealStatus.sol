@@ -7,9 +7,6 @@ pragma solidity ^0.8.17;
 import "./interfaces/IAggregatorOracle.sol";
 import "./data-segment/Proof.sol";
 
-import {MarketAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MarketAPI.sol";
-import {MarketTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MarketTypes.sol";
-
 // Delta that implements the AggregatorOracle interface
 contract DealStatus is IAggregatorOracle, Proof {
     uint256 private transactionId;
@@ -36,6 +33,23 @@ contract DealStatus is IAggregatorOracle, Proof {
 
         // Emit the event
         emit SubmitAggregatorRequest(transactionId, _cid);
+        return transactionId;
+    }
+
+    function submitRaaS(
+        bytes memory _cid,
+		uint256 _replication_target,
+        uint256 _repair_threshold,
+		uint256 _renew_threshold
+    ) external returns (uint256) {
+        // Increment the transaction ID
+        transactionId++;
+
+        // Save _cid
+        txIdToCid[transactionId] = _cid;
+
+        // Emit the event
+        emit SubmitAggregatorRequestWithRaaS(transactionId, _cid, _replication_target, _repair_threshold, _renew_threshold);
         return transactionId;
     }
 
@@ -71,6 +85,14 @@ contract DealStatus is IAggregatorOracle, Proof {
         return cidToDeals[_cid];
     }
 
+    function getAllCIDs() external view returns (bytes[] memory) {
+        bytes[] memory cids = new bytes[](transactionId);
+        for (uint256 i = 0; i < transactionId; i++) {
+            cids[i] = txIdToCid[i + 1];
+        }
+        return cids;
+    }
+
     // getActiveDeals should return all the _cid's active dealIds
     function getActiveDeals(bytes memory _cid) external returns (Deal[] memory) {
         // get all the deal ids for the cid
@@ -103,7 +125,7 @@ contract DealStatus is IAggregatorOracle, Proof {
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealId);
 
-            if (block.timestamp < uint64(dealTerm.end) - epochs) {
+            if (block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)) {
                 delete expiringDealIds[i];
             }
         }

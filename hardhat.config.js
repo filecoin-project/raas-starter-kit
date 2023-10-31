@@ -18,6 +18,9 @@ module.exports = {
         },
     },
     defaultNetwork: "calibrationnet",
+    mocha: {
+        timeout: 100000000
+    },
     networks: {
         localnet: {
             chainId: 31415926,
