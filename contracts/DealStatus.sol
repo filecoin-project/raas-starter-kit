@@ -31,9 +31,9 @@ contract DealStatus is IAggregatorOracle, Proof {
 
     function submitRaaS(
         bytes memory _cid,
-		uint256 _replication_target,
+        uint256 _replication_target,
         uint256 _repair_threshold,
-		uint256 _renew_threshold
+        uint256 _renew_threshold
     ) external returns (uint256) {
         // Increment the transaction ID
         transactionId++;
@@ -42,7 +42,13 @@ contract DealStatus is IAggregatorOracle, Proof {
         txIdToCid[transactionId] = _cid;
 
         // Emit the event
-        emit SubmitAggregatorRequestWithRaaS(transactionId, _cid, _replication_target, _repair_threshold, _renew_threshold);
+        emit SubmitAggregatorRequestWithRaaS(
+            transactionId,
+            _cid,
+            _replication_target,
+            _repair_threshold,
+            _renew_threshold
+        );
         return transactionId;
     }
 
@@ -95,7 +101,8 @@ contract DealStatus is IAggregatorOracle, Proof {
         for (uint256 i = 0; i < activeDealIds.length; i++) {
             uint64 dealID = activeDealIds[i].dealId;
             // get the deal's expiration epoch
-            MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI.getDealActivation(dealID);
+            MarketTypes.GetDealActivationReturn memory dealActivationStatus = MarketAPI
+                .getDealActivation(dealID);
 
             if (dealActivationStatus.terminated > 0 || dealActivationStatus.activated == -1) {
                 delete activeDealIds[i];
@@ -117,7 +124,9 @@ contract DealStatus is IAggregatorOracle, Proof {
             // get the deal's expiration epoch
             MarketTypes.GetDealTermReturn memory dealTerm = MarketAPI.getDealTerm(dealId);
 
-            if (block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)) {
+            if (
+                block.number < uint64(dealTerm.end) - epochs || block.number > uint64(dealTerm.end)
+            ) {
                 delete expiringDealIds[i];
             }
         }
