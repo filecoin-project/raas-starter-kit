@@ -1,30 +1,31 @@
-const { expect } = require("chai");
-const fs = require('fs');
-const CIDTool = require('cid-tool')
+const { expect } = require("chai")
+const fs = require("fs")
+const CIDTool = require("cid-tool")
 
 async function deploy(name) {
-    const Cid = await ethers.getContractFactory("Cid");
-    const cid = await Cid.deploy();
+    const Cid = await ethers.getContractFactory("Cid")
+    const cid = await Cid.deploy()
 
     const Contract = await ethers.getContractFactory(name, {
         libraries: {
             Cid: cid.address,
         },
-    });
-    return await Contract.deploy().then(f => f.deployed());
+    })
+    return await Contract.deploy().then((f) => f.deployed())
 }
 
 describe("Aggregator Tests", function () {
+    before(async function () {
+        this.dealstatus = await deploy("DealStatusMock")
+    })
 
-    before(async function() {
-        this.dealstatus = await deploy('DealStatusMock');
-    });
-
-    describe("Validate Aggregator", function() {
-        it("Should submit a valid request", async function() { 
-            cid = "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127";
-            await expect(this.dealstatus.submit(cid)).to.emit(this.dealstatus, "SubmitAggregatorRequest").withArgs(1, cid);
-        });
+    describe("Validate Aggregator", function () {
+        it("Should submit a valid request", async function () {
+            cid = "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
+            await expect(this.dealstatus.submit(cid))
+                .to.emit(this.dealstatus, "SubmitAggregatorRequest")
+                .withArgs(1, cid)
+        })
 
         it("Should submit a callback with the expected Aux Data", async function () {
             verifData = {
@@ -81,9 +82,11 @@ describe("Aggregator Tests", function () {
             }
             expectedAux = {
                 commPa: "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
-                sizePa: 0x800000000
+                sizePa: 0x800000000,
             }
-            await expect(this.dealstatus.complete(1, 1234, 4321, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 1234);
+            await expect(this.dealstatus.complete(1, 1234, 4321, incProof, verifData))
+                .to.emit(this.dealstatus, "CompleteAggregatorRequest")
+                .withArgs(1, 1234)
 
             /*
             const newAux = await this.dealstatus.complete(1, 1234, incProof, verifData);
@@ -91,15 +94,14 @@ describe("Aggregator Tests", function () {
             expect(newAux.data.commPa).to.equal(expectedAux.commPa);
             expect(newAux.data.sizePa).to.equal(expectedAux.sizePa);
             */
-        });
+        })
 
-        
         function ipfsCidToHex(ipfsCid) {
-            rval = CIDTool.format(ipfsCid, { base: 'base16' })
-            return rval.substr(1, rval.length - 1);
+            rval = CIDTool.format(ipfsCid, { base: "base16" })
+            return rval.substr(1, rval.length - 1)
         }
 
-        it("Should return all dealIDs created by the aggregator", async function() {
+        it("Should return all dealIDs created by the aggregator", async function () {
             verifData = {
                 commPc: "0x0181e2039220200d0e0a0100030000000000000000000000000000000000000000000000000000",
                 sizePc: 0x20000000,
@@ -154,26 +156,45 @@ describe("Aggregator Tests", function () {
             }
             expectedAux = {
                 commPa: "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127",
-                sizePa: 0x800000000
+                sizePa: 0x800000000,
             }
-            await expect(this.dealstatus.complete(1, 2222, 4321, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 2222);
-            const allDeals = await this.dealstatus.getAllDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
-            expect(allDeals.toString()).to.be.equal("1234,4321,2222,4321");
-        });
-        
-        it("Should return all the input cid's active dealIds", async function() {
-            const activeDeals = await this.dealstatus.callStatic.getActiveDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
-            expect(activeDeals.toString()).to.be.equal("1234,4321,2222,4321");
-        });
+            await expect(this.dealstatus.complete(1, 2222, 4321, incProof, verifData)).to.emit(this.dealstatus, "CompleteAggregatorRequest").withArgs(1, 2222)
+            const allDeals = await this.dealstatus.getAllDeals(
+                "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
+            )
+            expect(allDeals.toString()).to.be.equal("1234,4321,2222,4321")
+        })
 
-        it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function() {
-            const expiringDeals = await this.dealstatus.callStatic.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000);
-            expect(expiringDeals.toString()).to.be.equal("1234,4321,2222,4321");
-        });
-        it("Should be able to return the miner of a deal", async function() {
-            const allDeals = await this.dealstatus.getAllDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127");
+        it("Should return all the input cid's active dealIds", async function () {
+            const activeDeals = await this.dealstatus.callStatic.getActiveDeals(
+                "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
+            )
+            expect(activeDeals.toString()).to.be.equal("1234,4321,2222,4321")
+        })
+
+        it("Should return all the deals' dealIds if they are expiring within a certain input epoch", async function () {
+            const expiringDeals = await this.dealstatus.callStatic.getExpiringDeals("0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127", 1000)
+            expect(expiringDeals.toString()).to.be.equal("1234,4321,2222,4321")
+        })
+        it("Should be able to return the miner of a deal", async function () {
+            const allDeals = await this.dealstatus.getAllDeals(
+                "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
+            )
             // console.log(allDeals);
-            expect(allDeals[1].minerId.toString()).to.be.equal("4321");
-        });
-    });
-});
+            expect(allDeals[1].minerId.toString()).to.be.equal("4321")
+        })
+        it("Should return all the CIDs", async function () {
+            const allCIDs = await this.dealstatus.callStatic.getAllCIDs()
+            expect(allCIDs.toString()).to.be.equal(
+                "0x0181e2039220203f46bc645b07a3ea2c04f066f939ddf7e269dd77671f9e1e61a3a3797e665127"
+            )
+            this.dealstatus.submit(cid)
+        })
+        
+        it("Should submit a valid request with submitRaaS ", async function () {
+            await expect(this.dealstatus.submitRaaS(cid, 2, 100, 200))
+                .to.emit(this.dealstatus, "SubmitAggregatorRequestWithRaaS")
+                .withArgs(3, cid, 2, 100, 200)
+        })
+    })
+})
