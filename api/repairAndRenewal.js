@@ -1,27 +1,38 @@
 const { getDealInfo, getBlockNumber } = require("./lotusApi.js")
+const logger = require("./winston")
 async function executeRepairJobs(lighthouseAggregator) {
     const REPAIR_EPOCHS = 1000 // Replace with the actual value
     const dealInfos = lighthouseAggregator.loadDealState()
     // Traverse through all the dealIds in dealNodeJobs
-    for (const dealId in dealInfos) {
-        // Run getDealInfo for all deal ids
-        const dealInfo = await getDealInfo(dealId)
+    for (const index in dealInfos) {
+        const deal = dealInfos[index]
+        try {
+            logger.info("Running repair job for deal: " + deal.dealId)
+            // Run getDealInfo for all deal ids
+            const dealInfo = await getDealInfo(Number(deal.dealId))
 
-        // Check if the response.data.result.state.slashepoch - EPOCHs < getBlockNumber()
-        const blockNumber = await getBlockNumber()
-        if (
-            dealInfo.State.SectorStartEpoch > -1 &&
-            dealInfo.State.SlashEpoch != -1 &&
-            blockNumber - dealInfo.State.SlashEpoch > EPOCHS
-        ) {
-            // Call lighthouseProcessWithRetry for all cids in that deal of dealNodeJobs with their transactionId and replicationtarget as 1
-            for (const deal of dealInfos[dealId]) {
-                await lighthouseAggregator.lighthouseProcessWithRetry(
-                    deal.cid,
-                    deal.transactionId,
-                    1
+            // Check if the response.data.result.state.slashepoch - EPOCHs < getBlockNumber()
+            const blockNumber = await getBlockNumber()
+            if (
+                dealInfo.State.SectorStartEpoch > -1 &&
+                dealInfo.State.SlashEpoch != -1 &&
+                blockNumber - dealInfo.State.SlashEpoch < REPAIR_EPOCHS
+            ) {
+                // Call lighthouseProcessWithRetry for all cids in that deal of dealNodeJobs with their transactionId and replicationtarget as 1
+                for (const cid of deal.cids) {
+                    await lighthouseAggregator.lighthouseProcessWithRetry(
+                        cid.cid,
+                        cid.transactionId,
+                        1
+                    )
+                }
+                lighthouseAggregator.dealNodeJobs = lighthouseAggregator.dealNodeJobs.filter(
+                    (dealJob) => dealJob.dealId !== deal.dealId
                 )
+                lighthouseAggregator.saveDealState()
             }
+        } catch (error) {
+            logger.error(error)
         }
     }
 }
@@ -31,30 +42,33 @@ async function executeRenewalJobs(lighthouseAggregator) {
     const dealInfos = lighthouseAggregator.loadDealState()
 
     // Traverse through all the dealIds in dealNodeJobs
-    for (const dealId in dealInfos) {
+    for (const index in dealInfos) {
         // Run getDealInfo for all deal ids
-        let dealInfo
-
+        const deal = dealInfos[index]
+        logger.info("Running renewal job for deal: " + deal.dealId)
         try {
-            dealInfo = await getDealInfo(Number(dealId))
-        } catch (error) {
-            return
-        }
+            const dealInfo = await getDealInfo(Number(deal.dealId))
 
-        // Check if the response.data.result.state.slashepoch - EPOCHs < getBlockNumber()
-        const blockNumber = await getBlockNumber()
-        if (!dealInfo) {
-            return
-        }
-        if (dealInfo.Proposal.EndEpoch - blockNumber > RENEWAL_EPOCHS) {
-            // Call lighthouseProcessWithRetry for all cids in that deal of dealNodeJobs with their transactionId and replicationtarget as 1
-            for (const deal of dealInfos[dealId]) {
-                await lighthouseAggregator.lighthouseProcessWithRetry(
-                    deal.cid,
-                    deal.transactionId,
-                    1
+            // Check if the response.data.result.state.slashepoch - EPOCHs < getBlockNumber()
+            const blockNumber = await getBlockNumber()
+
+            if (dealInfo.Proposal.EndEpoch - blockNumber < RENEWAL_EPOCHS) {
+                // console.log("Renewal job found", dealId)
+                // Call lighthouseProcessWithRetry for all cids in that deal of dealNodeJobs with their transactionId and replicationtarget as 1
+                for (const cid of deal.cids) {
+                    await lighthouseAggregator.lighthouseProcessWithRetry(
+                        cid.cid,
+                        cid.transactionId,
+                        1
+                    )
+                }
+                lighthouseAggregator.dealNodeJobs = lighthouseAggregator.dealNodeJobs.filter(
+                    (dealJob) => dealJob.dealId !== deal.dealId
                 )
+                lighthouseAggregator.saveDealState()
             }
+        } catch (error) {
+            logger.error(error)
         }
     }
 }

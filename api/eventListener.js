@@ -17,9 +17,9 @@ const contractInstance = "0x16c74b630d8c28bfa0f353cf19c5b114407a8051" // The use
 const LighthouseAggregator = require("./lighthouseAggregator.js")
 const upload = multer({ dest: "temp/" }) // Temporary directory for uploads
 const { executeRenewalJobs, executeRepairJobs } = require("./repairAndRenewal.js")
-let stateFilePath = "./cache/service_state.json"
+// let stateFilePath = "./cache/service_state.json"
 
-let storedNodeJobs
+// let storedNodeJobs
 let lighthouseAggregatorInstance
 let isDealCreationListenerActive = false
 
@@ -29,18 +29,28 @@ app.listen(port, () => {
         isDealCreationListenerActive = true
         initializeDealCreationListener()
         initializeDataRetrievalListener()
-        storedNodeJobs = loadJobsFromState()
+        // storedNodeJobs = loadJobsFromState()
         lighthouseAggregatorInstance = new LighthouseAggregator()
     }
 
     console.log(`App started and is listening on port ${port}`)
-    console.log("Existing jobs on service node: ", storedNodeJobs)
-
+    // console.log("Existing jobs on service node: ", storedNodeJobs)
     setInterval(async () => {
-        console.log("Executing jobs")
-        // await executeRepairJobs(lighthouseAggregatorInstance)
-        await executeRenewalJobs(lighthouseAggregatorInstance)
-    }, 5000) // 43200000 = 12 hours
+        console.log("checking for deals")
+        lighthouseAggregatorInstance.aggregatorJobs.forEach(async (job) => {
+            lighthouseAggregatorInstance.processDealInfos(job.lighthouse_cid, job.txID)
+        })
+
+        setTimeout(async () => {
+            console.log("Executing jobs")
+            await executeRenewalJobs(lighthouseAggregatorInstance)
+        }, 5000) // 5000 milliseconds = 5 seconds
+    }, 10000) // 10000 milliseconds = 10 seconds
+
+    // setInterval(async () => {
+    //     console.log("executing repair jobs")
+    //     await executeRepairJobs(lighthouseAggregatorInstance)
+    // }, 20000) // 10000 milliseconds = 10 seconds
 })
 
 // app.use(express.urlencoded({ extended: true }))
@@ -65,11 +75,11 @@ async function initializeDealCreationListener() {
             `Received SubmitAggregatorRequestWithRaaS event: (Transaction ID: ${transactionId}, CID: ${cid}), Replication target: ${_replication_target}, Repair threshold: ${_repair_threshold}, Renew threshold: ${_renew_threshold}`
         )
         // Store the txID of the job in the job queue
-        storedNodeJobs.forEach((job) => {
-            if (job.cid === ethers.utils.toUtf8String(cid)) {
-                job.txID = transactionId
-            }
-        })
+        // storedNodeJobs.forEach((job) => {
+        //     if (job.cid === ethers.utils.toUtf8String(cid)) {
+        //         job.txID = transactionId
+        //     }
+        // })
 
         if (processedTransactionIds.has(transactionId)) {
             console.log(`Ignoring already processed transaction ID: ${transactionId}`)
@@ -105,8 +115,8 @@ async function initializeDealCreationListener() {
                 return result
             } catch (error) {
                 console.error("File processing error. Please try again:", error)
-                storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1)
-                saveJobsToState()
+                // storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1)
+                // saveJobsToState()
             }
             // }
             // else {
@@ -161,7 +171,7 @@ async function initializeDataRetrievalListener() {
     // Listener for edge aggregator
     lighthouseAggregatorInstance.eventEmitter.on("DealReceived", async (dealInfos) => {
         // Process the dealInfos
-        let txID = dealInfos.txID.toString()
+        let txID = dealInfos.txID
         let dealIDs = dealInfos.dealID
         let miners = dealInfos.miner
         let inclusionProof = {
@@ -179,12 +189,12 @@ async function initializeDataRetrievalListener() {
         // The size piece is originally in hex. Convert it to a number.
         verifierData.sizePc = parseInt(verifierData.sizePc, 16)
         // Add on the dealInfos to the existing job stored inside the storedNodeJobs.
-        storedNodeJobs.forEach((job) => {
-            if (job.txID === dealInfos.txID) {
-                job.dealInfos = dealInfos
-            }
-        })
-        saveJobsToState()
+        // storedNodeJobs.forEach((job) => {
+        //     if (job.txID === dealInfos.txID) {
+        //         job.dealInfos = dealInfos
+        //     }
+        // })
+        // saveJobsToState()
         console.log("Deal received with dealInfos: ", dealInfos)
         try {
             // For each dealID, complete the deal
@@ -193,39 +203,28 @@ async function initializeDataRetrievalListener() {
                 // console.log(`txID: Type - ${typeof txID}, Value - ${txID}`)
                 // console.log(`dealID: Type - ${typeof dealIDs[i]}, Value - ${dealIDs[i]}`)
                 // console.log(`miner: Type - ${typeof miners[i]}, Value - ${miners[i]}`)
-                console.log(
-                    `inclusionProof: Type - ${typeof inclusionProof}, Value - ${Number(
-                        inclusionProof.proofIndex.index
-                    )}`,
-                    inclusionProof.proofIndex.path,
-                    Number(inclusionProof.proofSubtree.index),
-                    inclusionProof.proofSubtree.path
-                )
-                console.log(
-                    `verifierData: Type - ${typeof verifierData}, Value - ${verifierData.commPc}`,
-                    verifierData.sizePc
-                )
 
-                await dealStatus.complete(
-                    txID,
-                    dealIDs[i],
-                    miners[i],
-                    [
-                        [Number(inclusionProof.proofIndex.index), inclusionProof.proofIndex.path],
-                        [
-                            Number(inclusionProof.proofSubtree.index),
-                            inclusionProof.proofSubtree.path,
-                        ],
-                    ],
-                    [verifierData.commPc, verifierData.sizePc]
-                )
+                // await dealStatus.complete(
+                //     txID,
+                //     dealIDs[i],
+                //     miners[i],
+                //     [
+                //         [Number(inclusionProof.proofIndex.index), inclusionProof.proofIndex.path],
+                //         [
+                //             Number(inclusionProof.proofSubtree.index),
+                //             inclusionProof.proofSubtree.path,
+                //         ],
+                //     ],
+                //     [verifierData.commPc, verifierData.sizePc],
+                //     { gasLimit: ethers.utils.parseUnits("3000000", "wei") }
+                // )
                 console.log("Deal completed for deal ID: ", dealIDs[i])
             }
         } catch (err) {
             console.log("Error submitting file for completion: ", err)
             // Remove the job at this stage if the deal cannot be completed
-            storedNodeJobs = storedNodeJobs.filter((job) => job.txID != txID)
-            saveJobsToState()
+            // storedNodeJobs = storedNodeJobs.filter((job) => job.txID != txID)
+            // saveJobsToState()
         }
     })
 

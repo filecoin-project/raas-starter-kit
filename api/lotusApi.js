@@ -27,7 +27,7 @@ async function getDealInfo(dealId) {
             logger.error(response.data.error.message)
             return null
         }
-        logger.info(response.data.result)
+        // logger.info(response.data.result)
         return response.data.result
     } catch (error) {
         logger.error(error)
@@ -43,7 +43,7 @@ async function getBlockNumber() {
 
         // convert the result to a number
         const blockNumber = parseInt(response.data.result, 16)
-        logger.info(blockNumber)
+        // logger.info(blockNumber)
         return blockNumber
     } catch (error) {
         logger.error(error)
