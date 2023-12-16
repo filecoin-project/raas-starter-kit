@@ -17,7 +17,7 @@ if (!lighthouseDealDownloadEndpoint) {
 }
 
 let stateFilePath = "./cache/lighthouse_agg_state.json"
-let dealFilePath = "./cache/deal_state.json"
+
 /// A new aggregator implementation should be created for each aggregator contract
 class LighthouseAggregator {
     constructor() {
@@ -28,17 +28,16 @@ class LighthouseAggregator {
         this.eventEmitter = new EventEmitter()
         // Load previous app job state
         this.aggregatorJobs = this.loadState()
-        this.dealNodeJobs = this.loadDealState()
         console.log("Loaded previous LighthouseAggregator state: ", this.aggregatorJobs)
         // Upload any files that don't have a content ID yet (in case of interruption)
         // For any files that do, poll the deal status
         this.aggregatorJobs.forEach(async (job) => {
-            // if (!job.lighthouse_cid) {
-            //     const lighthouse_cid = await this.pinCIDAndMakeDeal(job.cid)
-            //     job.lighthouse_cid = lighthouse_cid
-            //     this.saveState()
-            // }
-            this.processDealInfos(18, 1000, job.cid, job.txID)
+            if (!job.lighthouse_cid) {
+                const lighthouse_cid = await this.pinCIDAndMakeDeal(job.cid)
+                job.lighthouse_cid = lighthouse_cid
+                this.saveState()
+            }
+            this.processDealInfos(18, 1000, job.lighthouse_cid)
         })
         console.log("Aggregator initialized, polling for deals...")
     }
@@ -64,7 +63,7 @@ class LighthouseAggregator {
         return cid
     }
 
-    async processDealInfos(maxRetries, initialDelay, lighthouse_cid, transactionId) {
+    async processDealInfos(maxRetries, initialDelay, lighthouse_cid) {
         let delay = initialDelay
 
         for (let i = 0; i < maxRetries; i++) {
@@ -84,8 +83,9 @@ class LighthouseAggregator {
                     console.log("Lighthouse deal infos received: ", response.data)
                     // First need to strip t0 from the front of the miner address
                     // The stripped miner string should then be converted to an integer
-                    let job = this.aggregatorJobs.find((job) => job.cid == lighthouse_cid)
-                    // console.log("job: ", job)
+                    let job = this.aggregatorJobs.find(
+                        (job) => job.lighthouse_cid == lighthouse_cid
+                    )
                     if (!job.txID) {
                         console.log(
                             "Warning: Contract may not have received deal. Please resubmit. No txID found for contentID: ",
@@ -98,7 +98,6 @@ class LighthouseAggregator {
                     }
                     let dealIds = []
                     let miner = []
-                    console.log("response.data.dealInfo: ", response.data.dealInfo)
                     response.data.dealInfo.forEach((item) => {
                         dealIds.push(item.dealId)
                         miner.push(item.storageProvider.replace("t0", ""))
@@ -124,38 +123,6 @@ class LighthouseAggregator {
                             (job) => job.lighthouse_cid != lighthouse_cid
                         )
                         this.saveState()
-
-                        // Assuming dealInfos.dealID is an array of deal IDs
-                        dealInfos.dealID.forEach((dealID) => {
-                            const dealObject = { transactionId: transactionId, cid: lighthouse_cid }
-                            if (dealID in this.dealNodeJobs) {
-                                // If the dealID exists in dealNodeJobs, find the index of an object with the same cid
-                                let index = -1
-                                index = this.dealNodeJobs[dealID].findIndex(
-                                    (obj) => obj.cid === lighthouse_cid
-                                )
-
-                                if (index !== -1) {
-                                    // If an object with the same cid exists, check if the transactionId is the same
-                                    if (
-                                        this.dealNodeJobs[dealID][index].transactionId !==
-                                        transactionId
-                                    ) {
-                                        // If the transactionId is not the same, replace it with the current one
-                                        this.dealNodeJobs[dealID][index].transactionId =
-                                            transactionId
-                                    }
-                                } else {
-                                    // If no object with the same cid exists, append the current dealObject
-                                    this.dealNodeJobs[dealID].push(dealObject)
-                                }
-                            } else {
-                                // If the dealID does not exist in dealNodeJobs, add it with the dealObject in an array
-                                this.dealNodeJobs[dealID] = [dealObject]
-                            }
-                        })
-                        this.saveDealState()
-
                         return
                     } else {
                         console.log("Waiting for nonzero dealID: ", lighthouse_cid)
@@ -211,27 +178,6 @@ class LighthouseAggregator {
         }
     }
 
-    async lighthouseProcessWithRetry(cidString, transactionId, _replication_target) {
-        let retries = 1 // Number of retries
-
-        while (retries >= 0) {
-            try {
-                // important
-                // call this function as many replications are needed
-                const lighthouseCID = await this.processFile(cidString, transactionId)
-                await this.processDealInfos(18, 1000, lighthouseCID, transactionId)
-                return lighthouseCID // Return the result if successful
-            } catch (error) {
-                console.error("An error occurred:", error)
-                if (retries === 0) {
-                    throw error // If no more retries left, rethrow the error
-                }
-            }
-
-            retries-- // Decrement the retry counter
-        }
-    }
-
     loadState(path = stateFilePath) {
         // check if the state file exists
         if (fs.existsSync(path)) {
@@ -244,32 +190,12 @@ class LighthouseAggregator {
         }
     }
 
-    loadDealState(path = dealFilePath) {
-        // check if the state file exists
-        if (fs.existsSync(path)) {
-            // if it exists, read it and parse the JSON
-            const rawData = fs.readFileSync(path)
-            return JSON.parse(rawData)
-        } else {
-            // if it doesn't exist, return an empty array
-            return []
-        }
-    }
     saveState(path = stateFilePath) {
         // write the current state to the file
         if (path != undefined) {
             stateFilePath = path
         }
         const data = JSON.stringify(this.aggregatorJobs)
-        fs.writeFileSync(path, data)
-    }
-
-    saveDealState(path = dealFilePath) {
-        // write the current state to the file
-        if (path != undefined) {
-            dealFilePath = path
-        }
-        const data = JSON.stringify(this.dealNodeJobs)
         fs.writeFileSync(path, data)
     }
 
