@@ -17,32 +17,9 @@ module.exports = async ({ deployments }) => {
     //console.log(accounts[0])
 
     console.log("Wallet Ethereum Address:", wallet.address)
-    const chainId = network.config.chainId
 
     //deploy DealStatus
-    const Cid = await ethers.getContractFactory("Cid", accounts[0])
-    console.log("Deploying Cid...")
-    const cid = await Cid.deploy()
-    await cid.deployed()
-    console.log("Cid deployed to:", cid.address)
-
-    //deploy DealStatus
-    const Proof = await ethers.getContractFactory("Proof", {
-        libraries: {
-            Cid: cid.address,
-        },
-    })
-    console.log("Deploying Proof...")
-    const proof = await Proof.deploy()
-    await proof.deployed()
-    console.log("Proof deployed to:", proof.address)
-
-    //deploy DealStatus
-    const dealStatus = await ethers.getContractFactory("DealStatus", {
-        libraries: {
-            Cid: cid.address,
-        },
-    })
+    const dealStatus = await ethers.getContractFactory("DealStatus", accounts[0])
     console.log("Deploying DealStatus...")
     const dealstatus = await dealStatus.deploy()
     await dealstatus.deployed()
