@@ -72,9 +72,11 @@ There's a contract interface in the `contracts/interfaces` directory that `DealS
 
 ## Interacting with the RaaS application
 
-The RaaS application is a server that handles REST API requests for renewing, replicating, or repairing storage deals. It is located in the `api` directory.
+The demo RaaS application is a server that handles REST API requests for renewing, replicating, or repairing storage deals. It is located in the `api` directory.
 
 Before starting the frontend, ensure that you have already started your RaaS node service.
+
+Configure all the environment variobles correctly form .env.example before starting the raas service.
 
 To start the server, run the following commands:
 
@@ -160,18 +162,32 @@ The `jobType` field can be one of the following: `renew`, `replicate`, or `repai
 ## Using Lighthouse Raas Services
 
 Lighthouse has deployed its own raas service on the Calibrationnet testnet as well as Filecoin Mainnet. You can Interact with the Lighthouse Raas service through the DealStatus contract deployed by Lighthouse at following addresses.
-Calibrationnet testnet: `Mainnet address`
-Filecoin Mainnet: `Testnet address`
+
+- Calibrationnet testnet: `Testnet address`
+
+- Filecoin Mainnet: `Mainnet address`
 
 You can use the LighthouseDealStatus contract interface here and call the submit-raas task as following to submit a job to Lighthouse Raas service.
 
 ```bash
-yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2
+yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2 --network calibrationnet
 ```
+similarly for mainnet you can use the following command
+```bash
+yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2 --network filecoinmainnet
+```
+
+
 Few things to keep in mind while using the Lighthouse Raas service:
 - The params for renewal and repair have been decided by lighthouse universally for all the deals, thus giving different params would not modify those params. This is done to handle these jobs together easily for large number of cids.
 - The cid uploaded for raas service must be pinned to IPFS so as to be retrieved by Lighthouse Deal Engine to execute raas jobs.
 - Their is maxReplication param in LighthouseDealStatus contract which is currently set to 2 for both Calibrationnet testnet and Filecoin Mainnet. This means that you can only replicate your deal to 2 different miners using Lighthouse Raas service. This would be increased soon.
+
+You can also interact with Lighthous verified contracts on Calibrationnet testnet and Filecoin Mainnet directly through Filfox. You can find the verified contracts here:
+
+- [Calibrationnet testnet verified contracts](https://calibration.filfox.io/en/contract/verified-contracts)
+
+- [Filecoin Mainnet verified contracts](https://filfox.info/en/contract/verified-contracts)
 
 ## Run Your Own Raas and Innovate !!!
 
