@@ -85,7 +85,7 @@ yarn start # This starts up the frontend
 
 You can access a frontend of the app at [localhost:1337](http://localhost:1337/). 
 
-**Note: some processes that the service performs (such as uploading deals to lighthouse) may take up to 24 hours. Once you submit the deal, you do not need to keep the node running.** The node will attempt to finish incomplete jobs on startup by reading from the state-persisting files it creates in cache whenever jobs are registered.
+<!-- **Note: some processes that the service performs (such as uploading deals to lighthouse) may take up to 24 hours. Once you submit the deal, you do not need to keep the node running.** The node will attempt to finish incomplete jobs on startup by reading from the state-persisting files it creates in cache whenever jobs are registered.
 
 Several test cases for the service's functionality are located in `api/tests`. To run them, run the following command:
 
@@ -95,7 +95,7 @@ yarn test-service
 # Tests interactions between service and aggregator nodes
 yarn test-edge
 yarn test-lighthouse
-```
+``` -->
 
 ### How RaaS Works
 
@@ -108,8 +108,8 @@ The API frontend performs the following:
   - **Replication**: When building a storage solution with FVM on Filecoin, storage deals need to be replicated across geo location, policy sizes and reputation. Replication deals ensure that data can be replicated N times across a number of storage providers.
   - **Renewal**: When building storage solutions with FVM on Filecoin, storage deals need to be live for a long time. This service should be able to take an existing deal and renew it with the same or a different storage provider.
   - **Repair**: When building storage solutions with FVM on Filecoin, storage deals need to be stable. Repair jobs ensure that data can be maintained when it comes close to the end of its lifetime, or if the data somehow becomes inactive and needs to be repaired via. another storage provider.
-  - **Monitors Smart Contract**: The node listens to the `SubmitAggregatorRequest` event in aggregators’ smart contract, and trigger the following workflow whenever it sees a new SubmitAggregatorRequest event. 
-    - 1. A new`SubmitAggregatorRequest` event comes in, the node saves save the `txId` and `cid`, and go to the next step
+  - **Monitors Smart Contract**: The node listens to the `SubmitAggregatorRequestWithRaaS` event in aggregators’ smart contract, and trigger the following workflow whenever it sees a new SubmitAggregatorRequestWithRaaS event. 
+    - 1. A new`SubmitAggregatorRequestWithRaaS` event comes in, the node saves save the `txId` and `cid`, and go to the next step
     - 2. Create a new deal with aggregators by retrieving and uploading the data
       - The response contains an ID, which is the `content_id`
     - 3. [Use the content_id to check the upload’s status](https://github.com/application-research/edge-ur/blob/car-gen/docs/aggregation.md#checking-the-status-by-content-id)
@@ -156,5 +156,32 @@ curl --location 'http://localhost:1337/api/register_job' \
 The `aggregator` field can be one of the following: `edge`, or `lighthouse`. This changes the type of aggregator node that the service will use to interact with the Filecoin network.
 
 The `jobType` field can be one of the following: `renew`, `replicate`, or `repair`. This changes the type of job that the service will perform.
+
+## Using Lighthouse Raas Services
+
+Lighthouse has deployed its own raas service on the Calibrationnet testnet as well as Filecoin Mainnet. You can Interact with the Lighthouse Raas service through the DealStatus contract deployed by Lighthouse at following addresses.
+Calibrationnet testnet: `0x4c6c2b0e1b5f5e0e9c3e1b4b4c6c2b0e1b5f5e0e`
+Filecoin Mainnet: `0x4c6c2b0e1b5f5e0e9c3e1b4b4c6c2b0e1b5f5e0e`
+
+You can use the LighthouseDealStatus contract interface here and call the submit-raas task as following to submit a job to Lighthouse Raas service.
+
+```bash
+yarn hardhat submit-raas --contract 0x905c63B45957bD26089041cf4CFd201A3871856b --piece-cid <Your-cid> --replications 2
+```
+Few things to keep in mind while using the Lighthouse Raas service:
+- The params for renewal and repair have been decided by lighthouse universally for all the deals, thus 
+- Their is maxReplication param in LighthouseDealStatus contract which is currently set to 2 for both Calibrationnet testnet and Filecoin Mainnet. This means that you can only replicate your deal to 2 different miners using Lighthouse Raas service. This would be increased soon.
+
+## Run Your Own Raas and Innovate !!!
+
+This repo has a basic demo implementation of Raas service. You can use this as a starting point to build your own Raas service. Few Ideas to build on could be:
+
+- Build a Raas service that ensures that every file get replicated with different miners and with different raas params for different files.
+
+- Set up on-chain payments for Raas service. Currently the Raas service is free to use. You can build a payment system on top of it.
+
+-  You could come with innovative implementations of raas such that both data Providers and miners get paid for their services and slashed for their bad behavior using PoDSI integration in Raas service.
+
+
 
 Find more information [here](https://www.notion.so/Renew-Replication-Starter-Kit-f57af3ebd221462b8b8ef2714178865a#fc387e4c63114459b2583572c823a4c5)

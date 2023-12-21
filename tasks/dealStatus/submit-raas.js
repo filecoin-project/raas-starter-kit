@@ -1,9 +1,11 @@
 task("submit-raas", "Calls submit raas function of dealStatus")
     .addParam("contract", "The address of the deal status solidity")
     .addParam("pieceCid", "The piece CID of the deal you want the status of")
+    .addParam("replications", "The number of replications needed")
     .setAction(async (taskArgs) => {
         const contractAddr = taskArgs.contract
         const cid = ethers.utils.toUtf8Bytes(taskArgs.pieceCid)
+        const replications = taskArgs.replications
 
         const networkId = network.name
         console.log("Getting deal status on network", networkId)
@@ -18,7 +20,7 @@ task("submit-raas", "Calls submit raas function of dealStatus")
         const dealStatus = await DealStatus.attach(contractAddr)
 
         //send a transaction to call makeDealProposal() method
-        transaction = await dealStatus.submitRaaS(cid, 2, 100, 100)
+        transaction = await dealStatus.submitRaaS(cid, replications, 1000, 1000)
         transactionReceipt = await transaction.wait()
         // console.log(transactionReceipt)
 
