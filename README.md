@@ -167,7 +167,9 @@ Lighthouse has deployed its own raas service on the Calibrationnet testnet as we
 
 - Filecoin Mainnet: `Mainnet address`
 
-You can use the ILighthouseDealStatus interface [here](https://github.com/lighthouse-web3/raas-starter-kit/tree/raas-public/contracts/interfaces/ILighthouseDealStatus.sol) and call the submit-raas task as following to submit a job to Lighthouse Raas service.
+You can use the ILighthouseDealStatus interface [here](https://github.com/lighthouse-web3/raas-starter-kit/tree/raas-public/contracts/interfaces/ILighthouseDealStatus.sol) to use Lighthouse Raas service contract in your own contracts.
+
+Also, you can directly call the submit-raas task as following to submit a job to Lighthouse Raas service.
 
 ```bash
 yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2 --network calibrationnet
