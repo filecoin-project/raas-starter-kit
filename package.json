@@ -15,7 +15,7 @@
     "fuzzing": "docker run -it --rm -v $PWD:/src trailofbits/eth-security-toolbox",
     "chain": "hardhat node --network hardhat --no-deploy",
     "start": "webpack-cli serve --open",
-    "service": "node api/service.js",
+    "service": "node api/eventListener.js",
     "deploy-calibration": "npx hardhat deploy --network calibrationnet"
   },
   "license": "MIT",

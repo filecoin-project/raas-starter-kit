@@ -12,6 +12,7 @@ const lighthouseDealDownloadEndpoint = process.env.LIGHTHOUSE_DEAL_DOWNLOAD_ENDP
 const lighthouseDealInfosEndpoint = process.env.LIGHTHOUSE_DEAL_INFOS_ENDPOINT
 const lighthousePinEndpoint = process.env.LIGHTHOUSE_PIN_ENDPOINT
 const { getDealInfo } = require("./lotusApi.js")
+const { needRenewal } = require("./repairAndRenewal.js")
 if (!lighthouseDealDownloadEndpoint) {
     throw new Error("Missing environment variables: data endpoints")
 }
@@ -57,6 +58,8 @@ class LighthouseAggregator {
         }
 
         // Pin cid to lighthouse
+        // This function makes deal with the current cid with lighthouse
+        // Ideally it should be called as per the replication target
         const lighthouse_cid = await this.pinCIDAndMakeDeal(cid)
 
         // Find the job with the matching CID and update the lighthouse_cid
@@ -67,18 +70,12 @@ class LighthouseAggregator {
         return cid
     }
 
-    // async processDealInfos(maxRetries, initialDelay, lighthouse_cid, transactionId) {
     async processDealInfos(lighthouse_cid, transactionId) {
         // let delay = initialDelay
 
         // for (let i = 0; i < maxRetries; i++) {
         // try {
-        let response = await axios.get(lighthouseDealInfosEndpoint, {
-            params: {
-                cid: lighthouse_cid,
-                network: "testnet", // Change the network to mainnet when ready
-            },
-        })
+        let response = await this.getLighthouseCidInfo(lighthouse_cid)
         if (!response.data) {
             logger.info("No deal found polling lighthouse for lighthouse_cid: " + lighthouse_cid)
         } else {
@@ -109,9 +106,14 @@ class LighthouseAggregator {
                 await Promise.all(
                     response.data.dealInfo.map(async (item) => {
                         const dealInfo = await getDealInfo(Number(item.dealId))
-                        if (dealInfo) {
+                        const x = await needRenewal(item.dealId)
+                        if (dealInfo && !x) {
                             dealIds.push(item.dealId)
-                            miner.push(item.storageProvider.replace("t0", ""))
+                            if (item.storageProvider.startsWith("f0")) {
+                                miner.push(item.storageProvider.replace("f0", ""))
+                            } else {
+                                miner.push(item.storageProvider.replace("t0", ""))
+                            }
                             expirationEpoch.push(dealInfo.Proposal.EndEpoch)
                         }
                     })
@@ -198,27 +200,27 @@ class LighthouseAggregator {
         // this.eventEmitter.emit("error", new Error("All retries failed, totaling: " + maxRetries))
     }
 
-    // async uploadFileAndMakeDeal(filePath) {
-    //     try {
-    //         const dealParams = {
-    //             miner: [process.env.MINER],
-    //             repair_threshold: null,
-    //             renew_threshold: null,
-    //             network: process.env.NETWORK,
-    //         }
-    //         const response = await lighthouse.upload(
-    //             filePath,
-    //             process.env.LIGHTHOUSE_API_KEY,
-    //             false,
-    //             dealParams
-    //         )
-    //         const lighthouse_cid = response.data.Hash
-    //         console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid)
-    //         return lighthouse_cid
-    //     } catch (error) {
-    //         logger.error("An error occurred:" + error)
-    //     }
-    // }
+    async uploadFileAndMakeDeal(filePath) {
+        try {
+            const dealParams = {
+                miner: [process.env.MINER],
+                repair_threshold: null,
+                renew_threshold: null,
+                network: process.env.NETWORK,
+            }
+            const response = await lighthouse.upload(
+                filePath,
+                process.env.LIGHTHOUSE_API_KEY,
+                false,
+                dealParams
+            )
+            const lighthouse_cid = response.data.Hash
+            console.log("Uploaded file, lighthouse_cid: ", lighthouse_cid)
+            return lighthouse_cid
+        } catch (error) {
+            logger.error("An error occurred:" + error)
+        }
+    }
 
     async pinCIDAndMakeDeal(cidString) {
         try {
@@ -244,14 +246,11 @@ class LighthouseAggregator {
 
         while (retries >= 0) {
             try {
-                // important
-                // call this function as many replications are needed
                 const lighthouseCID = await this.processFile(
                     cidString,
                     transactionId,
                     _replication_target
                 )
-                // await this.processDealInfos(18, 1000, lighthouseCID, transactionId)
                 return lighthouseCID // Return the result if successful
             } catch (error) {
                 logger.error(error)
@@ -332,6 +331,15 @@ class LighthouseAggregator {
                 reject(err)
             })
         })
+    }
+    async getLighthouseCidInfo(lighthouse_cid) {
+        const response = await axios.get(lighthouseDealInfosEndpoint, {
+            params: {
+                cid: lighthouse_cid,
+                network: "testnet", // Change the network to mainnet when ready
+            },
+        })
+        return response
     }
 }
 

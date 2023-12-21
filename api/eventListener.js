@@ -10,10 +10,10 @@ const fs = require("fs")
 const path = require("path")
 const multer = require("multer")
 const sleep = require("util").promisify(setTimeout)
-
+require("dotenv").config()
 const port = 1337
 const contractName = "DealStatus"
-const contractInstance = "0x16c74b630d8c28bfa0f353cf19c5b114407a8051" // The user will also input
+const contractInstance = process.env.DEAL_STATUS_ADDRESS // The user will also input
 const LighthouseAggregator = require("./lighthouseAggregator.js")
 const upload = multer({ dest: "temp/" }) // Temporary directory for uploads
 const { executeRenewalJobs, executeRepairJobs } = require("./repairAndRenewal.js")
@@ -53,7 +53,105 @@ app.listen(port, () => {
     // }, 20000) // 10000 milliseconds = 10 seconds
 })
 
-// app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true }))
+
+// Registers jobs for node to periodically execute jobs (every 12 hours)
+app.post("/api/register_job", upload.none(), async (req, res) => {
+    // Capture when the request was received for default enddate
+    const requestReceivedTime = new Date()
+    // Default end date is 1 month from the request received time
+    const defaultEndDate = requestReceivedTime.setMonth(requestReceivedTime.getMonth() + 1)
+
+    // Create a new job object from the request body
+    // If certain fields are not present, use hardcoded defaults.
+    let newJob = {
+        cid: req.body.cid,
+        endDate: req.body.endDate || defaultEndDate,
+        jobType: req.body.jobType || "all",
+        replicationTarget: req.body.replicationTarget || 2,
+        aggregator: req.body.aggregator || "lighthouse",
+        epochs: req.body.epochs || 4,
+    }
+
+    if (newJob.cid != null && newJob.cid != "") {
+        try {
+            ethers.utils.toUtf8Bytes(newJob.cid) // this will throw an error if cid is not valid bytes or hex string
+        } catch {
+            console.log("Error: CID must be a hexadecimal string or bytes")
+            return res.status(400).json({
+                error: "CID must be of a valid deal",
+            })
+        }
+    } else {
+        return res.status(400).json({
+            error: "CID cannot be empty",
+        })
+    }
+
+    console.log("Submitting job to aggregator contract with CID: ", newJob.cid)
+    await registerJob(newJob)
+
+    return res.status(201).json({
+        message: "Job registered successfully.",
+    })
+})
+
+// Uploads a file to the aggregator if it hasn't already been uploaded
+app.post("/api/uploadFile", upload.single("file"), async (req, res) => {
+    // At the moment, this only handles lighthouse.
+    // Depending on the functionality of the Edge aggregator in the future, may or may not match compatibility.
+    console.log("Received file upload request")
+
+    // req.file.path will contain the local file path of the uploaded file on the server
+    const filePath = req.file.path
+
+    try {
+        // Upload the file to the aggregator
+        const lighthouse_cid = await lighthouseAggregatorInstance.uploadFileAndMakeDeal(filePath)
+        // Optionally, you can remove the file from the temp directory if needed
+        fs.unlinkSync(filePath)
+
+        return res.status(201).json({
+            message: "Job registered successfully.",
+            cid: lighthouse_cid,
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).send("An error occurred")
+    }
+})
+
+// Queries the status of a deal with the provided CID
+app.get("/api/deal_status", async (req, res) => {
+    const cid = req.query.cid
+    try {
+        ethers.utils.toUtf8Bytes(cid) // this will throw an error if cid is not valid bytes or hex string
+    } catch {
+        console.log("Error: CID must be a hexadecimal string or bytes")
+        return res.status(400).json({
+            error: "CID must be of a valid deal",
+        })
+    }
+    const response = await lighthouseAggregatorInstance.getLighthouseCidInfo(cid)
+    const job = response.data
+    console.log("Job: ", job)
+    const dealStatus = await ethers.getContractAt(contractName, contractInstance)
+    let activeDeals
+    try {
+        activeDeals = await dealStatus.callStatic.getActiveDeals(ethers.utils.toUtf8Bytes(cid))
+    } catch (err) {
+        console.log("An error has occurred when retrieving deal status: ", err)
+        activeDeals = 0
+    }
+    return res.status(200).json({
+        dealInfos: job.dealInfo,
+        jobType: "all",
+        replicationTarget: "2",
+        epochs: "1000",
+        currentActiveDeals: activeDeals,
+    })
+})
+
 app.use(express.static(path.join(__dirname, "public")))
 
 app.use(express.json())
@@ -243,4 +341,25 @@ function loadJobsFromState() {
 function saveJobsToState() {
     const data = JSON.stringify(storedNodeJobs)
     fs.writeFileSync(stateFilePath, data)
+}
+async function registerJob(newJob) {
+    // TODO: Add validation for the new job, for example:
+    // 1. Check if newJob is an object with all the required properties
+    // 2. Check if newJob.cid is a hexadecimal string
+    // 3. Check if newJob.endDate is a valid date
+    // 4. Check if newJob.jobType is either 'renew' or 'replication'
+    // 5. Check if newJob.replicationTarget is a number
+    console.log("Executing deal creation job with CID: ", newJob.cid)
+
+    const dealStatus = await ethers.getContractAt(contractName, contractInstance)
+    try {
+        // await dealStatus.submitRaaS(
+        //     ethers.utils.toUtf8Bytes(newJob.cid),
+        //     newJob.replicationTarget,
+        //     newJob.epochs,
+        //     100
+        // )
+    } catch (error) {
+        console.log("Error submitting deal creation job: ", error)
+    }
 }
