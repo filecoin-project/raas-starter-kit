@@ -163,20 +163,20 @@ The `jobType` field can be one of the following: `renew`, `replicate`, or `repai
 
 Lighthouse has deployed its own raas service on the Calibrationnet testnet as well as Filecoin Mainnet. You can Interact with the Lighthouse Raas service through the DealStatus contract deployed by Lighthouse at following addresses.
 
-- Calibrationnet testnet: `Testnet address`
+- Calibrationnet testnet: `0x4015c3E5453d38Df71539C0F7440603C69784d7a`
 
-- Filecoin Mainnet: `Mainnet address`
+- Filecoin Mainnet:   `0xd928b92E6028463910b2005d118C2edE16C38a2a`
 
 You can use the ILighthouseDealStatus interface [here](https://github.com/lighthouse-web3/raas-starter-kit/tree/raas-public/contracts/interfaces/ILighthouseDealStatus.sol) to use Lighthouse Raas service contract in your own contracts.
 
 Also, you can directly call the submit-raas task as following to submit a job to Lighthouse Raas service.
 
 ```bash
-yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2 --network calibrationnet
+yarn hardhat submit-raas --contract 0x4015c3E5453d38Df71539C0F7440603C69784d7a --piece-cid <Your-cid> --replications 2 --network calibrationnet
 ```
 similarly for mainnet you can use the following command
 ```bash
-yarn hardhat submit-raas --contract <Lighthouse deployed address> --piece-cid <Your-cid> --replications 2 --network filecoinmainnet
+yarn hardhat submit-raas --contract 0xd928b92E6028463910b2005d118C2edE16C38a2a --piece-cid <Your-cid> --replications 2 --network filecoinmainnet
 ```
 
 
@@ -187,9 +187,9 @@ Few things to keep in mind while using the Lighthouse Raas service:
 
 You can also interact with Lighthous verified contracts on Calibrationnet testnet and Filecoin Mainnet directly through Filfox. You can find the verified contracts here:
 
-- [Calibrationnet testnet verified contracts](https://calibration.filfox.io/en/contract/verified-contracts)
+- [Calibrationnet testnet verified contracts](https://calibration.filfox.info/en/address/0x4015c3E5453d38Df71539C0F7440603C69784d7a)
 
-- [Filecoin Mainnet verified contracts](https://filfox.info/en/contract/verified-contracts)
+- [Filecoin Mainnet verified contracts](https://filfox.info/en/address/0xd928b92E6028463910b2005d118C2edE16C38a2a)
 
 ## Run Your Own Raas and Innovate !!!
 
