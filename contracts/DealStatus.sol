@@ -17,6 +17,13 @@ contract DealStatus is IAggregatorOracle, Proof {
         transactionId = 0;
     }
 
+    function computeExpectedAuxDataPublic(
+        InclusionProof memory _proof,
+        InclusionVerifierData memory _verifierData
+    ) public pure returns (InclusionAuxData memory) {
+        return computeExpectedAuxData(_proof, _verifierData);
+    }
+
     function submit(bytes memory _cid) external returns (uint256) {
         // Increment the transaction ID
         transactionId++;
@@ -67,7 +74,7 @@ contract DealStatus is IAggregatorOracle, Proof {
         bytes memory cid = txIdToCid[_id];
         for (uint256 i = 0; i < cidToDeals[cid].length; i++) {
             if (cidToDeals[cid][i].dealId == _dealId) {
-                return this.computeExpectedAuxData(_proof, _verifierData);
+                return this.computeExpectedAuxDataPublic(_proof, _verifierData);
             }
         }
 
@@ -76,7 +83,7 @@ contract DealStatus is IAggregatorOracle, Proof {
 
         // Perform validation logic
         // return this.computeExpectedAuxDataWithDeal(_dealId, _proof, _verifierData);
-        return this.computeExpectedAuxData(_proof, _verifierData);
+        return this.computeExpectedAuxDataPublic(_proof, _verifierData);
     }
 
     // allDealIds should return all the deal ids created by the aggregator

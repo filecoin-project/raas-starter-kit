@@ -15,28 +15,38 @@ contract Proof {
     using Cid for bytes32;
 
     // computeExpectedAuxData computes the expected auxiliary data given an inclusion proof and the data provided by the verifier.
-    function computeExpectedAuxData(InclusionProof memory ip, InclusionVerifierData memory verifierData)
-        public
-        pure
-        returns (InclusionAuxData memory)
-    {
-        require(isPow2(uint64(verifierData.sizePc)), "Size of piece provided by verifier is not power of two");
+    function computeExpectedAuxData(
+        InclusionProof memory ip,
+        InclusionVerifierData memory verifierData
+    ) internal pure returns (InclusionAuxData memory) {
+        require(
+            isPow2(uint64(verifierData.sizePc)),
+            "Size of piece provided by verifier is not power of two"
+        );
 
         bytes32 commPc = verifierData.commPc.cidToPieceCommitment();
         bytes32 assumedCommPa = computeRoot(ip.proofSubtree, commPc);
 
-        (bool ok, uint64 assumedSizePa) =
-            checkedMultiply(uint64(1) << uint64(ip.proofSubtree.path.length), uint64(verifierData.sizePc));
+        (bool ok, uint64 assumedSizePa) = checkedMultiply(
+            uint64(1) << uint64(ip.proofSubtree.path.length),
+            uint64(verifierData.sizePc)
+        );
         require(ok, "assumedSizePa overflow");
 
         uint64 dataOffset = ip.proofSubtree.index * uint64(verifierData.sizePc);
-        SegmentDesc memory en = makeDataSegmentIndexEntry(Fr32(commPc), dataOffset, uint64(verifierData.sizePc));
+        SegmentDesc memory en = makeDataSegmentIndexEntry(
+            Fr32(commPc),
+            dataOffset,
+            uint64(verifierData.sizePc)
+        );
         bytes32 enNode = truncatedHash(serialize(en));
         bytes32 assumedCommPa2 = computeRoot(ip.proofIndex, enNode);
         require(assumedCommPa == assumedCommPa2, "aggregator's data commitments don't match");
 
-        (bool ok2, uint64 assumedSizePa2) =
-            checkedMultiply(uint64(1) << uint64(ip.proofIndex.path.length), BYTES_IN_DATA_SEGMENT_ENTRY);
+        (bool ok2, uint64 assumedSizePa2) = checkedMultiply(
+            uint64(1) << uint64(ip.proofIndex.path.length),
+            BYTES_IN_DATA_SEGMENT_ENTRY
+        );
         require(ok2, "assumedSizePau64 overflow");
         require(assumedSizePa == assumedSizePa2, "aggregator's data size doesn't match");
 
@@ -50,34 +60,46 @@ contract Proof {
         uint64 dealId,
         InclusionProof memory ip,
         InclusionVerifierData memory verifierData
-    ) public returns (InclusionAuxData memory) {
+    ) internal returns (InclusionAuxData memory) {
         InclusionAuxData memory inclusionAuxData = computeExpectedAuxData(ip, verifierData);
         validateInclusionAuxData(dealId, inclusionAuxData);
         return inclusionAuxData;
     }
 
     // validateInclusionAuxData validates that the deal is activated and not terminated.
-    function validateInclusionAuxData(uint64 dealId, InclusionAuxData memory inclusionAuxData) internal {
+    function validateInclusionAuxData(
+        uint64 dealId,
+        InclusionAuxData memory inclusionAuxData
+    ) internal {
         // check that the deal is not terminated
-        MarketTypes.GetDealActivationReturn memory dealActivation = MarketAPI.getDealActivation(dealId);
+        MarketTypes.GetDealActivationReturn memory dealActivation = MarketAPI.getDealActivation(
+            dealId
+        );
         require(dealActivation.terminated <= 0, "Deal is terminated");
         require(dealActivation.activated > 0, "Deal is not activated");
 
-        MarketTypes.GetDealDataCommitmentReturn memory dealDataCommitment = MarketAPI.getDealDataCommitment(dealId);
-        require(keccak256(dealDataCommitment.data) == keccak256(inclusionAuxData.commPa), "Deal commD doesn't match");
+        MarketTypes.GetDealDataCommitmentReturn memory dealDataCommitment = MarketAPI
+            .getDealDataCommitment(dealId);
+        require(
+            keccak256(dealDataCommitment.data) == keccak256(inclusionAuxData.commPa),
+            "Deal commD doesn't match"
+        );
         require(dealDataCommitment.size == inclusionAuxData.sizePa, "Deal size doesn't match");
     }
 
     // validateIndexEntry validates that the index entry is in the correct position in the index.
     function validateIndexEntry(InclusionProof memory ip, uint64 assumedSizePa2) internal pure {
         uint64 idxStart = indexAreaStart(assumedSizePa2);
-        (bool ok3, uint64 indexOffset) = checkedMultiply(ip.proofIndex.index, BYTES_IN_DATA_SEGMENT_ENTRY);
+        (bool ok3, uint64 indexOffset) = checkedMultiply(
+            ip.proofIndex.index,
+            BYTES_IN_DATA_SEGMENT_ENTRY
+        );
         require(ok3, "indexOffset overflow");
         require(indexOffset >= idxStart, "index entry at wrong position");
     }
 
     // computeRoot computes the root of a Merkle tree given a leaf and a Merkle proof.
-    function computeRoot(ProofData memory d, bytes32 subtree) public pure returns (bytes32) {
+    function computeRoot(ProofData memory d, bytes32 subtree) internal pure returns (bytes32) {
         require(d.path.length < 64, "merkleproofs with depths greater than 63 are not supported");
         require(d.index >> d.path.length == 0, "index greater than width of the tree");
 
@@ -98,7 +120,7 @@ contract Proof {
     }
 
     // computeNode computes the parent node of two child nodes
-    function computeNode(bytes32 left, bytes32 right) public pure returns (bytes32) {
+    function computeNode(bytes32 left, bytes32 right) internal pure returns (bytes32) {
         bytes32 digest = sha256(abi.encodePacked(left, right));
         return truncate(digest);
     }
@@ -145,7 +167,11 @@ contract Proof {
     }
 
     // verify verifies that the given leaf is present in the merkle tree with the given root.
-    function verify(ProofData memory proof, bytes32 root, bytes32 leaf) public pure returns (bool) {
+    function verify(
+        ProofData memory proof,
+        bytes32 root,
+        bytes32 leaf
+    ) internal pure returns (bool) {
         return computeRoot(proof, leaf) == root;
     }
 
@@ -159,25 +185,25 @@ contract Proof {
     }
 
     // hashNode hashes the given node with the given left child.
-    function hashNode(bytes32 left, bytes32 right) public pure returns (bytes32) {
+    function hashNode(bytes32 left, bytes32 right) internal pure returns (bytes32) {
         bytes32 truncatedData = sha256(abi.encodePacked(left, right));
         truncatedData &= TRUNCATOR;
         return truncatedData;
     }
 
     // truncatedHash computes the truncated hash of the given data.
-    function truncatedHash(bytes memory data) public pure returns (bytes32) {
+    function truncatedHash(bytes memory data) internal pure returns (bytes32) {
         bytes32 truncatedData = sha256(abi.encodePacked(data));
         truncatedData &= TRUNCATOR;
         return truncatedData;
     }
 
     // makeDataSegmentIndexEntry creates a new data segment index entry.
-    function makeDataSegmentIndexEntry(Fr32 memory commP, uint64 offset, uint64 size)
-        internal
-        pure
-        returns (SegmentDesc memory)
-    {
+    function makeDataSegmentIndexEntry(
+        Fr32 memory commP,
+        uint64 offset,
+        uint64 size
+    ) internal pure returns (SegmentDesc memory) {
         SegmentDesc memory en;
         en.commDs = bytes32(commP.value);
         en.offset = offset;
@@ -187,7 +213,7 @@ contract Proof {
     }
 
     // computeChecksum computes the checksum of the given segment description.
-    function computeChecksum(SegmentDesc memory _sd) public pure returns (bytes16) {
+    function computeChecksum(SegmentDesc memory _sd) internal pure returns (bytes16) {
         bytes memory serialized = serialize(_sd);
         bytes32 digest = sha256(serialized);
         digest &= hex"ffffffffffffffffffffffffffffff3f";
@@ -195,7 +221,7 @@ contract Proof {
     }
 
     // serialize serializes the given segment description.
-    function serialize(SegmentDesc memory sd) public pure returns (bytes memory) {
+    function serialize(SegmentDesc memory sd) internal pure returns (bytes memory) {
         bytes memory result = new bytes(ENTRY_SIZE);
 
         // Pad commDs
