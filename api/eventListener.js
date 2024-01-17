@@ -272,27 +272,24 @@ async function initializeDataRetrievalListener() {
         let txID = dealInfos.txID
         let dealIDs = dealInfos.dealID
         let miners = dealInfos.miner
-        let inclusionProof = {
-            proofIndex: {
-                index: "0x" + dealInfos.inclusion_proof.proofIndex.index,
-                path: dealInfos.inclusion_proof.proofIndex.path.map((value) => "0x" + value),
-            },
-            proofSubtree: {
-                index: "0x" + dealInfos.inclusion_proof.proofSubtree.index,
-                path: dealInfos.inclusion_proof.proofSubtree.path.map((value) => "0x" + value),
-            },
-        }
-        let verifierData = dealInfos.verifier_data
-        verifierData.commPc = "0x" + verifierData.commPc
-        // The size piece is originally in hex. Convert it to a number.
-        verifierData.sizePc = parseInt(verifierData.sizePc, 16)
-        // Add on the dealInfos to the existing job stored inside the storedNodeJobs.
-        // storedNodeJobs.forEach((job) => {
-        //     if (job.txID === dealInfos.txID) {
-        //         job.dealInfos = dealInfos
-        //     }
-        // })
-        // saveJobsToState()
+
+        let inclusion_proof = dealInfos.inclusion_proof
+        let verifier_data = dealInfos.verifier_data
+        inclusion_proof.forEach((value, index) => {
+            inclusion_proof[index].proofIndex.index = "0x" + value.proofIndex.index
+            inclusion_proof[index].proofIndex.path.forEach((value, i) => {
+                inclusion_proof[index].proofIndex.path[i] = "0x" + value
+            })
+            inclusion_proof[index].proofSubtree.index = "0x" + value.proofSubtree.index
+            inclusion_proof[index].proofSubtree.path.forEach((value, i) => {
+                inclusion_proof[index].proofSubtree.path[i] = "0x" + value
+            })
+        })
+
+        verifier_data.forEach((value, index) => {
+            verifier_data[index].commPc = "0x" + value.commPc
+            verifier_data[index].sizePc = parseInt(value.sizePc, 16)
+        })
         console.log("Deal received with dealInfos: ", dealInfos)
         try {
             // For each dealID, complete the deal
@@ -302,20 +299,23 @@ async function initializeDataRetrievalListener() {
                 // console.log(`dealID: Type - ${typeof dealIDs[i]}, Value - ${dealIDs[i]}`)
                 // console.log(`miner: Type - ${typeof miners[i]}, Value - ${miners[i]}`)
 
-                // await dealStatus.complete(
-                //     txID,
-                //     dealIDs[i],
-                //     miners[i],
-                //     [
-                //         [Number(inclusionProof.proofIndex.index), inclusionProof.proofIndex.path],
-                //         [
-                //             Number(inclusionProof.proofSubtree.index),
-                //             inclusionProof.proofSubtree.path,
-                //         ],
-                //     ],
-                //     [verifierData.commPc, verifierData.sizePc],
-                //     { gasLimit: ethers.utils.parseUnits("3000000", "wei") }
-                // )
+                await dealStatus.complete(
+                    txID,
+                    dealIDs[i],
+                    miners[i],
+                    [
+                        [
+                            Number(inclusion_proof[i].proofIndex.index),
+                            inclusion_proof[i].proofIndex.path,
+                        ],
+                        [
+                            Number(inclusion_proof[i].proofSubtree.index),
+                            inclusion_proof[i].proofSubtree.path,
+                        ],
+                    ],
+                    [verifier_data[i].commPc, verifier_data[i].sizePc],
+                    { gasLimit: ethers.utils.parseUnits("5000000", "wei") }
+                )
                 console.log("Deal completed for deal ID: ", dealIDs[i])
             }
         } catch (err) {
