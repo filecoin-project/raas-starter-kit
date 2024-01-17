@@ -97,7 +97,9 @@ class LighthouseAggregator {
             let dealIds = []
             let miner = []
             let expirationEpoch = []
-            logger.info("response.data.dealInfo: " + response.data.dealInfo)
+            let inclusion_proof = []
+            let verifier_data = []
+            // logger.info("response.data.dealInfo: " + response.data.dealInfo)
             if (!response.data.dealInfo) {
                 logger.info("Waiting for nonzero dealID: " + lighthouse_cid)
                 return
@@ -109,6 +111,8 @@ class LighthouseAggregator {
                         const x = await needRenewal(item.dealId)
                         if (dealInfo && !x) {
                             dealIds.push(item.dealId)
+                            inclusion_proof.push(item.proof.inclusionProof)
+                            verifier_data.push(item.proof.verifierData)
                             if (item.storageProvider.startsWith("f0")) {
                                 miner.push(item.storageProvider.replace("f0", ""))
                             } else {
@@ -123,15 +127,14 @@ class LighthouseAggregator {
             }
             // console.log("dealIds: ", dealIds)
             let dealInfos = {
-                txID: job.txID,
+                txID: transactionId,
                 dealID: dealIds,
-                inclusion_proof: response.data.proof.fileProof.inclusionProof,
-                verifier_data: response.data.proof.fileProof.verifierData,
+                inclusion_proof: inclusion_proof,
+                verifier_data: verifier_data,
                 // For each deal, the miner address is returned with a t0 prefix
                 // Replace the t0 prefix with an empty string to get the address
                 miner: miner,
-            }
-            // If we receive a nonzero dealID, emit the DealReceived event
+            } // If we receive a nonzero dealID, emit the DealReceived event
             if (dealInfos.dealID[0] != null) {
                 logger.info(
                     "Lighthouse deal infos processed after receiving nonzero dealID: " + dealInfos
