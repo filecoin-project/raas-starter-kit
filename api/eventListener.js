@@ -353,12 +353,12 @@ async function registerJob(newJob) {
 
     const dealStatus = await ethers.getContractAt(contractName, contractInstance)
     try {
-        // await dealStatus.submitRaaS(
-        //     ethers.utils.toUtf8Bytes(newJob.cid),
-        //     newJob.replicationTarget,
-        //     newJob.epochs,
-        //     100
-        // )
+        await dealStatus.submitRaaS(
+            ethers.utils.toUtf8Bytes(newJob.cid),
+            newJob.replicationTarget,
+            newJob.epochs,
+            100
+        )
     } catch (error) {
         console.log("Error submitting deal creation job: ", error)
     }
