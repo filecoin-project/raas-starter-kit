@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {ProofData, InclusionProof, InclusionVerifierData, InclusionAuxData, SegmentDesc, Fr32} from "../data-segment/ProofTypes.sol";
 
-interface IDealStatus {
+interface ILighthouseDealStatus {
     struct Deal {
         // A unique identifier for the deal.
         uint64 dealId;
