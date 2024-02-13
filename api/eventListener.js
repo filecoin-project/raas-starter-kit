@@ -2,9 +2,6 @@ const express = require("express")
 const { ethers } = require("hardhat")
 const cors = require("cors")
 
-const { networkConfig } = require("../helper-hardhat-config")
-
-const axios = require("axios")
 const app = express()
 const fs = require("fs")
 const path = require("path")
@@ -17,9 +14,7 @@ const contractInstance = process.env.DEAL_STATUS_ADDRESS // The user will also i
 const LighthouseAggregator = require("./lighthouseAggregator.js")
 const upload = multer({ dest: "temp/" }) // Temporary directory for uploads
 const { executeRenewalJobs, executeRepairJobs } = require("./repairAndRenewal.js")
-// let stateFilePath = "./cache/service_state.json"
 
-// let storedNodeJobs
 let lighthouseAggregatorInstance
 let isDealCreationListenerActive = false
 
@@ -44,13 +39,13 @@ app.listen(port, () => {
         setTimeout(async () => {
             console.log("Executing jobs")
             await executeRenewalJobs(lighthouseAggregatorInstance)
-        }, 5000) // 5000 milliseconds = 5 seconds
-    }, 10000) // 10000 milliseconds = 10 seconds
+        }, 15000) // 5000 milliseconds = 5 seconds
+    }, 30000) // 10000 milliseconds = 10 seconds
 
-    // setInterval(async () => {
-    //     console.log("executing repair jobs")
-    //     await executeRepairJobs(lighthouseAggregatorInstance)
-    // }, 20000) // 10000 milliseconds = 10 seconds
+    setInterval(async () => {
+        console.log("executing repair jobs")
+        await executeRepairJobs(lighthouseAggregatorInstance)
+    }, 200000) // 10000 milliseconds = 10 seconds
 })
 
 app.use(express.urlencoded({ extended: true }))
@@ -134,7 +129,7 @@ app.get("/api/deal_status", async (req, res) => {
     }
     const response = await lighthouseAggregatorInstance.getLighthouseCidInfo(cid)
     const job = response.data
-    console.log("Job: ", job)
+    // console.log("Job: ", job)
     const dealStatus = await ethers.getContractAt(contractName, contractInstance)
     let activeDeals
     try {
@@ -142,6 +137,15 @@ app.get("/api/deal_status", async (req, res) => {
     } catch (err) {
         console.log("An error has occurred when retrieving deal status: ", err)
         activeDeals = 0
+    }
+    if (!job) {
+        return res.status(200).json({
+            dealInfos: [],
+            jobType: "all",
+            replicationTarget: "2",
+            epochs: "1000",
+            currentActiveDeals: activeDeals,
+        })
     }
     return res.status(200).json({
         dealInfos: job.dealInfo,
@@ -188,19 +192,6 @@ async function initializeDealCreationListener() {
         const cidString = ethers.utils.toUtf8String(cid)
 
         ;(async () => {
-            // Match CID to aggregator type by first finding the matching job in jobs list
-            // const job = storedNodeJobs.find((job) => job.cid === cidString)
-            // Once the deal returned by getDealInfos no longer contains a deal_id of 0, complete the deal
-            // Should be working alongside other instances of invocations of this function
-            // To process the dealInfos before completion of deal is handled at dataRetrievalListener
-            // Max retries: 18 (48 hours)
-            // Initial delay: 1000 ms
-            // if (job === undefined) {
-            //     // If the CID lookup doesn't yield a job
-            //     console.log("Error: Aggregator type not specified for job with CID: ", cidString)
-            // } else {
-            // if (job.aggregator === "lighthouse") {
-            // Reattach the event listener
             if (dealStatus.listenerCount("SubmitAggregatorRequestWithRaaS") === 0) {
                 dealStatus.once("SubmitAggregatorRequestWithRaaS", handleEvent)
             }
@@ -216,14 +207,7 @@ async function initializeDealCreationListener() {
                 // storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1)
                 // saveJobsToState()
             }
-            // }
-            // else {
-            //     console.log("Error: Invalid aggregator type for job with CID: ", cidString)
-            //     // Remove the job if the aggregator type is invalid
-            //     storedNodeJobs.splice(storedNodeJobs.indexOf(job), 1)
-            //     saveJobsToState()
-            // }
-            // }
+
             if (dealStatus.listenerCount("SubmitAggregatorRequestWithRaaS") === 0) {
                 dealStatus.once("SubmitAggregatorRequestWithRaaS", handleEvent)
             }
@@ -235,30 +219,6 @@ async function initializeDealCreationListener() {
         dealStatus.once("SubmitAggregatorRequestWithRaaS", handleEvent)
     }
 }
-
-// async function lighthouseProcessWithRetry(cidString, transactionId, _replication_target) {
-//     let retries = 1 // Number of retries
-
-//     while (retries >= 0) {
-//         try {
-//             // important
-//             // call this function as many replications are needed
-//             const lighthouseCID = await lighthouseAggregatorInstance.processFile(
-//                 cidString,
-//                 transactionId
-//             )
-//             await lighthouseAggregatorInstance.processDealInfos(18, 1000, lighthouseCID)
-//             return lighthouseCID // Return the result if successful
-//         } catch (error) {
-//             console.error("An error occurred:", error)
-//             if (retries === 0) {
-//                 throw error // If no more retries left, rethrow the error
-//             }
-//         }
-
-//         retries-- // Decrement the retry counter
-//     }
-// }
 
 // Initialize the listener for the Data Retrieval event
 async function initializeDataRetrievalListener() {
@@ -294,11 +254,6 @@ async function initializeDataRetrievalListener() {
         try {
             // For each dealID, complete the deal
             for (let i = 0; i < dealIDs.length; i++) {
-                // console.log("Completing deal with deal ID: ", dealIDs[i])
-                // console.log(`txID: Type - ${typeof txID}, Value - ${txID}`)
-                // console.log(`dealID: Type - ${typeof dealIDs[i]}, Value - ${dealIDs[i]}`)
-                // console.log(`miner: Type - ${typeof miners[i]}, Value - ${miners[i]}`)
-
                 await dealStatus.complete(
                     txID,
                     dealIDs[i],
@@ -320,9 +275,6 @@ async function initializeDataRetrievalListener() {
             }
         } catch (err) {
             console.log("Error submitting file for completion: ", err)
-            // Remove the job at this stage if the deal cannot be completed
-            // storedNodeJobs = storedNodeJobs.filter((job) => job.txID != txID)
-            // saveJobsToState()
         }
     })
 
@@ -357,7 +309,8 @@ async function registerJob(newJob) {
             ethers.utils.toUtf8Bytes(newJob.cid),
             newJob.replicationTarget,
             newJob.epochs,
-            100
+            100,
+            { gasLimit: 10000000000 }
         )
     } catch (error) {
         console.log("Error submitting deal creation job: ", error)

@@ -103,3 +103,4 @@ gas-report.txt
 
 contracts/test/fuzzing/crytic-export
 temp
+dist/

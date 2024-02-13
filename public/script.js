@@ -77,8 +77,7 @@ async function pollDealStatus(cid) {
             // If a 400 is returned, return it
             if (data.error) {
                 console.error("Error:", data.error)
-                document.getElementById("jobregStatus").textContent =
-                    "An error occurred while checking deal status."
+                document.getElementById("jobregStatus").textContent = "Waiting for deal status."
             } else if (data.dealInfos) {
                 console.log(data)
                 document.getElementById(
@@ -111,8 +110,7 @@ async function pollDealStatus(cid) {
         // Catch all remaining unexpected errors.
         .catch((error) => {
             console.error("Error:", error)
-            document.getElementById("jobregStatus").textContent =
-                "An error occurred while checking deal status."
+            document.getElementById("jobregStatus").textContent = "Waiting for deal status."
         })
 }
 

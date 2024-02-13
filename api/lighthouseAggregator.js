@@ -22,25 +22,12 @@ let dealFilePath = "./cache/deal_state.json"
 /// A new aggregator implementation should be created for each aggregator contract
 class LighthouseAggregator {
     constructor() {
-        // Each job is an object with the following properties:
-        // txID: the transaction ID of the job
-        // cid: the CID of the file
-        // lighthouse_cid: the lighthouse CID of the file
         this.eventEmitter = new EventEmitter()
         // Load previous app job state
         this.aggregatorJobs = this.loadState()
         this.dealNodeJobs = this.loadDealState()
         logger.info("Loaded previous LighthouseAggregator state: ", this.aggregatorJobs)
-        // Upload any files that don't have a content ID yet (in case of interruption)
-        // For any files that do, poll the deal status
-        // this.aggregatorJobs.forEach(async (job) => {
-        //     // if (!job.lighthouse_cid) {
-        //     //     const lighthouse_cid = await this.pinCIDAndMakeDeal(job.cid)
-        //     //     job.lighthouse_cid = lighthouse_cid
-        //     //     this.saveState()
-        //     // }
-        //     this.processDealInfos(18, 1000, job.cid, job.txID)
-        // })
+
         logger.info("Aggregator initialized, polling for deals...")
     }
 
@@ -193,14 +180,6 @@ class LighthouseAggregator {
                 logger.info("Waiting for nonzero dealID: " + lighthouse_cid)
             }
         }
-        // }
-        // catch (e) {
-        //     console.log("Error polling lighthouse for lighthouse_cid: ", lighthouse_cid + e)
-        // }
-        // await sleep(delay)
-        // delay *= 2
-        // }
-        // this.eventEmitter.emit("error", new Error("All retries failed, totaling: " + maxRetries))
     }
 
     async uploadFileAndMakeDeal(filePath) {
@@ -266,26 +245,56 @@ class LighthouseAggregator {
         }
     }
 
-    loadState(path = stateFilePath) {
-        // check if the state file exists
-        if (fs.existsSync(path)) {
-            // if it exists, read it and parse the JSON
-            const rawData = fs.readFileSync(path)
+    loadState(filePath = stateFilePath) {
+        // Check if the directory exists
+        const dir = path.dirname(filePath)
+        if (!fs.existsSync(dir)) {
+            // If the directory doesn't exist, create it
+            fs.mkdirSync(dir, { recursive: true })
+        }
+
+        // Check if the file exists
+        if (fs.existsSync(filePath)) {
+            // If the file exists, read it
+            const rawData = fs.readFileSync(filePath, "utf8")
+
+            // If the file is empty, return an empty array
+            if (rawData === "") {
+                return []
+            }
+
+            // Otherwise, parse the JSON and return it
             return JSON.parse(rawData)
         } else {
-            // if it doesn't exist, return an empty array
+            // If the file doesn't exist, create it with an empty array
+            fs.writeFileSync(filePath, JSON.stringify([]))
             return []
         }
     }
 
-    loadDealState(path = dealFilePath) {
-        // check if the state file exists
-        if (fs.existsSync(path)) {
-            // if it exists, read it and parse the JSON
-            const rawData = fs.readFileSync(path)
+    loadDealState(filePath = dealFilePath) {
+        // Check if the directory exists
+        const dir = path.dirname(filePath)
+        if (!fs.existsSync(dir)) {
+            // If the directory doesn't exist, create it
+            fs.mkdirSync(dir, { recursive: true })
+        }
+
+        // Check if the file exists
+        if (fs.existsSync(filePath)) {
+            // If the file exists, read it
+            const rawData = fs.readFileSync(filePath, "utf8")
+
+            // If the file is empty, return an empty array
+            if (rawData === "") {
+                return []
+            }
+
+            // Otherwise, parse the JSON and return it
             return JSON.parse(rawData)
         } else {
-            // if it doesn't exist, return an empty array
+            // If the file doesn't exist, create it with an empty array
+            fs.writeFileSync(filePath, JSON.stringify([]))
             return []
         }
     }
@@ -336,13 +345,17 @@ class LighthouseAggregator {
         })
     }
     async getLighthouseCidInfo(lighthouse_cid) {
-        const response = await axios.get(lighthouseDealInfosEndpoint, {
-            params: {
-                cid: lighthouse_cid,
-                network: "testnet", // Change the network to mainnet when ready
-            },
-        })
-        return response
+        try {
+            const response = await axios.get(lighthouseDealInfosEndpoint, {
+                params: {
+                    cid: lighthouse_cid,
+                    network: "testnet", // Change the network to mainnet when ready
+                },
+            })
+            return response
+        } catch (error) {
+            return []
+        }
     }
 }
 
