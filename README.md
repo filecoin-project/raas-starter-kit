@@ -7,6 +7,8 @@ This repository consists of two components to build a tool to renew or replicate
 * DealStatus Contract: a smart contract to query the status of storage deals.
 * eventListener.js: a demo RaaS aplication that renew, replicate, or repair storage deals when necessary.
 
+See a complete walkthrough demo of raas [here](https://www.youtube.com/watch?v=aDRK8f8gvmY)
+
 Please refer to this [doc](https://www.notion.so/pl-strflt/Data-FVM-234b7f4c17624cd8b972f92806732ca9) to understand more.
 
 ## Cloning the Repo
